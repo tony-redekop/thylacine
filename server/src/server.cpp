@@ -8,7 +8,7 @@
 namespace thylacine {
 
 Server::Server(int port) : port_{port}, sockfd_{-1}, res_{nullptr},
-  state_{State::INACTIVE}
+  state_{State::INACTIVE}, timeout_{0}
 {
   /* Bounds checking */
   if (port < 1 || port > 65535) {
@@ -52,6 +52,18 @@ void Server::bind()
       std::cerr << "error: create socket" << std::endl;
       continue;
     }
+    
+    /* Set socket options */
+    struct timeval tv; 
+    tv.tv_sec = timeout_;
+    tv.tv_usec = 0;
+
+    setsockopt(sockfd_,
+      SOL_SOCKET,       // set options at sockets API level
+      SO_RCVTIMEO,      // enable recieving timeout
+      &tv,
+      sizeof(tv)
+      );
 
     /* Attempt to bind socket */
     if (::bind(sockfd_, rp_->ai_addr, rp_->ai_addrlen) == -1) {
@@ -71,6 +83,25 @@ void Server::bind()
 
   freeaddrinfo(res_);  // we don't need this anymore
   res_ = nullptr;
+}
+
+void Server::listen()
+{
+  const int MAXBUFFLEN = 1000;
+  char buff[MAXBUFFLEN];
+  struct sockaddr_storage client_addr;
+  socklen_t addr_len = sizeof client_addr;  
+  
+  /* Note: recvfrom() is a blocking function */
+  int numbytes = recvfrom(sockfd_,  
+    buff,
+    MAXBUFFLEN-1,
+    0,
+    (struct sockaddr *)&client_addr, 
+    &addr_len);
+  if (numbytes == -1) {
+    throw std::runtime_error("error: recvfrom()");
+  }
 }
 
 }; // namespace thylacine

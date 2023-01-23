@@ -2,11 +2,13 @@
 #include <cstring>
 #include <iostream>
 #include <cassert>
+#include <unistd.h>
 #include "server.hpp"
 
 namespace thylacine {
 
-Server::Server(int port) : port_{port}, sockfd_{-1}, res_{nullptr}
+Server::Server(int port) : port_{port}, sockfd_{-1}, res_{nullptr},
+  state_{State::INACTIVE}
 {
   /* Bounds checking */
   if (port < 1 || port > 65535) {
@@ -35,6 +37,40 @@ Server::~Server()
     freeaddrinfo(res_);
     res_ = nullptr;
   }
+}
+
+void Server::bind() 
+{
+  /* Traverse results until we can successfully create and bind socket.
+     Upon loop termination, rp_ points to first valid result or nullptr. */
+  for (rp_ = res_; rp_ != nullptr; rp_ = rp_->ai_next) {
+    /* Attempt to create socket */
+    sockfd_ = socket(rp_->ai_family, 
+      rp_->ai_socktype,              
+      rp_->ai_protocol);
+    if (sockfd_ == -1) {
+      std::cerr << "error: create socket" << std::endl;
+      continue;
+    }
+
+    /* Attempt to bind socket */
+    if (::bind(sockfd_, rp_->ai_addr, rp_->ai_addrlen) == -1) {
+      close(sockfd_);
+      std::cerr << "error: bind socket" << std::endl;
+      continue;
+    }
+
+    break;
+  } 
+
+  if (rp_ == nullptr) {
+    throw std::runtime_error("error: failed to bind socket");
+  }
+ 
+  set_state(State::BOUND);
+
+  freeaddrinfo(res_);  // we don't need this anymore
+  res_ = nullptr;
 }
 
 }; // namespace thylacine

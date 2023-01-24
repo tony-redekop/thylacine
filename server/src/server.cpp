@@ -8,7 +8,7 @@
 namespace thylacine {
 
 Server::Server(int port) : port_{port}, sockfd_{-1}, res_{nullptr},
-  state_{State::INACTIVE}, timeout_{0}
+  state_{State::IDLE}, timeout_{0}
 {
   /* Bounds checking */
   if (port < 1 || port > 65535) {
@@ -79,8 +79,6 @@ void Server::bind()
     throw std::runtime_error("error: failed to bind socket");
   }
  
-  set_state(State::BOUND);
-
   freeaddrinfo(res_);  // we don't need this anymore
   res_ = nullptr;
 }

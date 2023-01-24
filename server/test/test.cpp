@@ -31,10 +31,7 @@ int main()
     /* TEST 1 : case 0 : create and bind socket to specified port */
     const int port = 4950;
     thylacine::Server device_01(port);  
-    assert(device_01.get_state() == thylacine::State::INACTIVE);
-    
     device_01.bind();
-    assert(device_01.get_state() == thylacine::State::BOUND);
 
     std::cout << "TEST 1 : case 0 : PASS" << std::endl;
     std::cout << "TEST 1 : COMPLETE\n" << std::endl;
@@ -47,14 +44,11 @@ int main()
     thylacine::Server device_01(4955);
     unsigned s = 1;  
     device_01.set_timeout(s);  // configure device to "listen" for s seconds
-    assert(device_01.get_state() == thylacine::State::INACTIVE);
 
     device_01.bind();
-    assert(device_01.get_state() == thylacine::State::BOUND);
 
     try {
       device_01.listen(); // we expect an exception due to timeout
-      // assert(device_01.get_state() == thylacine::State::LISTENING);
       std::cout << "TEST 2 : case 0 : FAIL" << std::endl;
     }
     catch(std::exception &e) {

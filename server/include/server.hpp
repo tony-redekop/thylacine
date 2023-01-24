@@ -7,7 +7,7 @@
 
 namespace thylacine {
 
-enum State { INACTIVE, BOUND, LISTENING };
+enum State { IDLE, LISTENING };
 
 /* Defines interface for our I/O device */
 class Server {

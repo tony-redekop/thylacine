@@ -32,6 +32,8 @@ private:
   struct addrinfo hints_;  // used to pre-configure socket address structures
   struct addrinfo *res_;   // holds results of library call getaddrinfo()
   struct addrinfo *rp_;    // results pointer points to first valid address struct
+
+  static void * get_inaddr(struct sockaddr *p_sa); // helper function returns IPv4 or IPv6 address 
 };
 
 }; // namespace thylacine

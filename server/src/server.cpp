@@ -2,6 +2,8 @@
 #include <cstring>
 #include <iostream>
 #include <cassert>
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #include <unistd.h>
 #include "server.hpp"
 
@@ -37,6 +39,18 @@ Server::~Server()
     freeaddrinfo(res_);
     res_ = nullptr;
   }
+}
+
+ /* Returns struct in_addr * (IPv4) or struct in6_addr * (IPv6) */
+void * Server::get_inaddr(struct sockaddr *p_sa)
+{
+  if(p_sa->sa_family == AF_INET)
+    return &(((struct sockaddr_in *)p_sa)->sin_addr);
+
+  if(p_sa->sa_family == AF_INET6)
+    return &(((struct sockaddr_in6 *)p_sa)->sin6_addr);
+
+  return nullptr;
 }
 
 void Server::bind() 
@@ -89,17 +103,30 @@ void Server::listen()
   char buff[MAXBUFFLEN];
   struct sockaddr_storage client_addr;
   socklen_t addr_len = sizeof client_addr;  
-  
-  /* Note: recvfrom() is a blocking function */
-  int numbytes = recvfrom(sockfd_,  
-    buff,
-    MAXBUFFLEN-1,
-    0,
-    (struct sockaddr *)&client_addr, 
-    &addr_len);
-  if (numbytes == -1) {
-    throw std::runtime_error("error: recvfrom()");
+
+  /* Main recieve loop */
+  while(1) { 
+    /* Note: recvfrom() is a blocking function.  It returns -1 if no data is 
+       recieved before timeout (if SO_RCVTIMEO is set at the socket level) */
+    int numbytes = recvfrom(sockfd_,  
+      buff,
+      MAXBUFFLEN-1,
+      0,
+      (struct sockaddr *)&client_addr, 
+      &addr_len);
+    if (numbytes == -1) { 
+      throw std::runtime_error("error: recvfrom()");
+    }
+
+    char s[INET6_ADDRSTRLEN];
+    inet_ntop(client_addr.ss_family,
+      get_inaddr((struct sockaddr *)&client_addr), s, sizeof s);
+    std::cout << "server: got a packet from " << s << std::endl; 
+    std::cout << "server: packet is " << numbytes << "bytes long" << std::endl;
+    buff[numbytes] = '\0';
+    std::cout << "server: packet contains: " << buff << std::endl;
   }
+  close(sockfd_);
 }
 
 }; // namespace thylacine

@@ -66,7 +66,7 @@ void Server::bind()
       std::cerr << "error: create socket" << std::endl;
       continue;
     }
-    
+
     /* Set socket options */
     struct timeval tv; 
     tv.tv_sec = timeout_;
@@ -106,8 +106,8 @@ void Server::listen()
 
   /* Main recieve loop */
   while(1) { 
-    /* Note: recvfrom() is a blocking function.  It returns -1 if no data is 
-       recieved before timeout (if SO_RCVTIMEO is set at the socket level) */
+    /* Note: recvfrom() blocks and returns -1 if no data is recieved 
+       before timeout (if set with SO_RCVTIMEO flag in setsockopt()) */
     int numbytes = recvfrom(sockfd_,  
       buff,
       MAXBUFFLEN-1,
@@ -121,10 +121,17 @@ void Server::listen()
     char s[INET6_ADDRSTRLEN];
     inet_ntop(client_addr.ss_family,
       get_inaddr((struct sockaddr *)&client_addr), s, sizeof s);
-    std::cout << "server: got a packet from " << s << std::endl; 
-    std::cout << "server: packet is " << numbytes << "bytes long" << std::endl;
+    std::cout << "server: got a UDP packet from " << s << std::endl; 
+    std::cout << "server: packet is " << numbytes << " bytes long" << std::endl;
     buff[numbytes] = '\0';
     std::cout << "server: packet contains: " << buff << std::endl;
+
+    /* Check for "STOP;" command to stop listening and exit loop */
+    std::string stop_msg{"STOP;"};
+    if (stop_msg == buff) { // std::string operator== allows C-style string in rhs operand
+      break;
+    }
+
   }
   close(sockfd_);
 }

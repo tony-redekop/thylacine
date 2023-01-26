@@ -16,28 +16,24 @@ enum State { IDLE, LISTENING };
 /* Defines interface for our I/O device */
 class Server {
 public:
-  Server(int port);
+  Server(unsigned port, unsigned timeout = 0);
   ~Server();
 
-  void bind();
   void listen();
-  
+
   inline State get_state() { return state_; }
-  inline void set_state(State state) { state_ = state; }
-  inline void set_timeout(unsigned s) { timeout_ = s; }
 
 private:
-  State state_; 
+  unsigned port_;           
+  unsigned timeout_;       // timeout for recieving (listening) 
+  int sockfd_;             // socket descriptor
+  State state_;            // device state  
+  struct addrinfo *res_;   // holds linked-list of results 
 
-  int port_;
-  int sockfd_;
-  unsigned timeout_;
-  
-  struct addrinfo hints_;  // used to pre-configure socket address structures
-  struct addrinfo *res_;   // holds results of library call getaddrinfo()
-  struct addrinfo *rp_;    // results pointer points to first valid address struct
+  void bind();  
 
-  static void * get_inaddr(struct sockaddr *p_sa); // helper function returns IPv4 or IPv6 address 
+  /* Helper functions */
+  static void * get_inaddr(struct sockaddr *sa); // returns IPv4 or IPv6 address 
   static int validate_message(char *msg);
 };
 

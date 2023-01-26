@@ -25,37 +25,22 @@ int main()
     std::cout << "TEST 0 : COMPLETE\n" << std::endl;
   } // end TEST 0
 
+
   { // start TEST 1
-    std::cout << "TEST 1 : CREATE AND BIND SOCKET" << std::endl;
-    
-    /* TEST 1 : case 0 : create and bind socket to specified port */
-    const int port = 4950;
-    thylacine::Server device_01(port);  
-    device_01.bind();
-
-    std::cout << "TEST 1 : case 0 : PASS" << std::endl;
-    std::cout << "TEST 1 : COMPLETE\n" << std::endl;
-  } // end TEST 1
-
-  { // start TEST 2
     std::cout << "TEST 2 : LISTEN ON SPECIFIED PORT" << std::endl;
 
-    /* TEST 2 : case 0 : listen() on specified port for s seconds */
-    thylacine::Server device_01(4955);
+    /* TEST 1 : case 0 : listen() on specified port for s seconds */
     unsigned s = 1;  
-    device_01.set_timeout(s);  // configure device to "listen" for s seconds
-
-    device_01.bind();
-
+    thylacine::Server device_01(4955, s);
     try {
       device_01.listen(); // we expect an exception due to timeout
-      std::cout << "TEST 2 : case 0 : FAIL" << std::endl;
+      std::cout << "TEST 1 : case 0 : FAIL" << std::endl;
     }
     catch(std::exception &e) {
-      std::cout << "TEST 2 : case 0 : PASS" << std::endl;
+      std::cout << "TEST 1 : case 0 : PASS" << std::endl;
     }
-    std::cout << "TEST 2 : COMPLETE" << std::endl;
-  } // end TEST 2
+    std::cout << "TEST 1 : COMPLETE" << std::endl;
+  } // end TEST 1
 
   std::cout << std::endl << "ALL TESTS COMPLETE" << std::endl;
   std::cout << "See test.cpp for details" << std::endl;

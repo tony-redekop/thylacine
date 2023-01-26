@@ -1,6 +1,7 @@
 #include <string>
 #include <cstring>
 #include <iostream>
+#include <sstream>
 #include <cassert>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -73,6 +74,18 @@ int Server::validate_message(char *msg)
     return 0;    
   }
   return -1;  // invalid message
+}
+
+/* Parses a validated message for commands and adds to command queue */
+void Server::parse_message(const std::string& msg)
+{
+  std::istringstream iss{msg};
+  std::string token;
+  int i = 0;
+  while(std::getline(iss, token, ';')) {  // delimiter is ';'
+    // std::cout << "parse_message(): " << token << std::endl;
+    queue_.push(token);
+  }
 }
 
 int Server::socket(unsigned timeout)
@@ -162,6 +175,11 @@ void Server::listen()
     if (stop_msg == buff) {
       break;
     }
+
+    /* Parse message for commands */
+    std::string msg{buff};
+    parse_message(msg);
+
   }
   close(sockfd_);
 }

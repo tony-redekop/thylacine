@@ -27,10 +27,10 @@ int main()
 
 
   { // start TEST 1
-    std::cout << "TEST 2 : LISTEN ON SPECIFIED PORT" << std::endl;
+    std::cout << "TEST 1 : LISTEN ON SPECIFIED PORT" << std::endl;
 
     /* TEST 1 : case 0 : listen() on specified port for s seconds */
-    unsigned s = 1;  
+    unsigned s = 0;  
     thylacine::Server device_01(4955, s);
     try {
       device_01.listen(); // we expect an exception due to timeout

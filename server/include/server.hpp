@@ -3,15 +3,21 @@
 
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <string>
 #include <netdb.h>
+#include <set>
 
 namespace thylacine {
 
-/* Device buffer max length */
-constexpr int MAXBUFFLEN = 256;
-
-/* Device state */
-enum State { IDLE, LISTENING };
+/* Globals */
+constexpr int MAXBUFFLEN = 256;         // device buffer max length
+const std::set<std::string> Commands {  // commands available to the client
+  "ID;",
+  "TEST;", 
+  "CMD=START;", 
+  "CMD=STOP;"
+};
+enum State { IDLE, LISTENING };         // possible device states
 
 /* Defines interface for our I/O device */
 class Server {

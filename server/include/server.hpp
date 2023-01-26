@@ -7,6 +7,10 @@
 
 namespace thylacine {
 
+/* Device buffer max length */
+constexpr int MAXBUFFLEN = 256;
+
+/* Device state */
 enum State { IDLE, LISTENING };
 
 /* Defines interface for our I/O device */
@@ -34,6 +38,7 @@ private:
   struct addrinfo *rp_;    // results pointer points to first valid address struct
 
   static void * get_inaddr(struct sockaddr *p_sa); // helper function returns IPv4 or IPv6 address 
+  static int validate_message(char *msg);
 };
 
 }; // namespace thylacine

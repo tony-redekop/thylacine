@@ -53,6 +53,16 @@ void * Server::get_inaddr(struct sockaddr *p_sa)
   return nullptr;
 }
 
+/* Validation of message size and last character.  0(1) time complexity.
+   Note:  Does not parse or verify if message is well-formed */
+int Server::validate_message(char *msg) { 
+  size_t len = strlen(msg);           // strlen() does not count null char '\0'
+  if(len > 1 && msg[len-1] == ';') {  // shortest possible valid message is "x;"
+    return 0;    
+  }
+  return -1;  // invalid message
+}
+
 void Server::bind() 
 {
   /* Traverse results until we can successfully create and bind socket.
@@ -99,39 +109,44 @@ void Server::bind()
 
 void Server::listen()
 {
-  const int MAXBUFFLEN = 1000;
   char buff[MAXBUFFLEN];
-  struct sockaddr_storage client_addr;
-  socklen_t addr_len = sizeof client_addr;  
+  struct sockaddr_storage client_inaddr;
+  socklen_t addr_len = sizeof client_inaddr;  
 
   /* Main recieve loop */
   while(1) { 
-    /* Note: recvfrom() blocks and returns -1 if no data is recieved 
-       before timeout (if set with SO_RCVTIMEO flag in setsockopt()) */
+    /* Note: recvfrom() blocks and returns -1 if no data is recieved before timeout */
     int numbytes = recvfrom(sockfd_,  
       buff,
       MAXBUFFLEN-1,
       0,
-      (struct sockaddr *)&client_addr, 
+      (struct sockaddr *)&client_inaddr, 
       &addr_len);
     if (numbytes == -1) { 
       throw std::runtime_error("error: recvfrom()");
     }
+    
+    char client_ip[INET6_ADDRSTRLEN];
+    inet_ntop(client_inaddr.ss_family,
+      get_inaddr((struct sockaddr *)&client_inaddr), client_ip, sizeof client_ip);
+    
+    buff[numbytes] = '\0';  // important to null terminate the message  
 
-    char s[INET6_ADDRSTRLEN];
-    inet_ntop(client_addr.ss_family,
-      get_inaddr((struct sockaddr *)&client_addr), s, sizeof s);
-    std::cout << "server: got a UDP packet from " << s << std::endl; 
-    std::cout << "server: packet is " << numbytes << " bytes long" << std::endl;
-    buff[numbytes] = '\0';
+    if (validate_message(buff) != 0) {
+      std::cerr << "server: invalid message recieved from "  << client_ip << std::endl;
+      continue;  // ignore invalid message and continue listening
+    }
+    
+    /* Print info */
+    std::cout << "server: got a UDP packet from " << client_ip << std::endl; 
     std::cout << "server: packet contains: " << buff << std::endl;
+    std::cout << "server: packet is " << numbytes << " bytes long" << std::endl;
 
     /* Check for "STOP;" command to stop listening and exit loop */
     std::string stop_msg{"STOP;"};
-    if (stop_msg == buff) { // std::string operator== allows C-style string in rhs operand
+    if (stop_msg == buff) {
       break;
     }
-
   }
   close(sockfd_);
 }

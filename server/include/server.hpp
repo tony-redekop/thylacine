@@ -30,7 +30,8 @@ private:
   State state_;            // device state  
   struct addrinfo *res_;   // holds linked-list of results 
 
-  void bind();  
+  int socket(unsigned timeout);
+  void bind();
 
   /* Helper functions */
   static void * get_inaddr(struct sockaddr *sa); // returns IPv4 or IPv6 address 

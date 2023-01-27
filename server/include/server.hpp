@@ -37,17 +37,12 @@ private:
   State state_;                    // device state  
   struct addrinfo *res_;           // holds linked-list of results 
 
-  /* Message handling */
-  void parse_msg(const std::string &msg);  // parse for commands and add to queue
-  std::queue<std::string> queue_;          // command queue 
-
-  /* Socket implementation methods */
   int socket(unsigned timeout);
   void bind();
- 
-  /* Helper functions (not tied to object state) */
-  static void *get_inaddr(struct sockaddr *sa);  // returns IPv4 or IPv6 address 
-  static int validate_msg(char *msg);            // ensure message is well-formed
+  static void *get_inaddr(struct sockaddr *sa);      // returns IPv4 or IPv6 address 
+  static bool validate_msg(const std::string& msg);  // ensure message is well-formed
+  static void parse_msg(const std::string &msg,      // extract tokens
+    std::queue<std::string>& tokens, const char delimiter);
 };
 
 }; // namespace thylacine

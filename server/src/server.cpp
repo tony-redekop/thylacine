@@ -65,26 +65,44 @@ void * Server::get_inaddr(struct sockaddr *sa)
   return nullptr;
 }
 
-/* Validation of message size and last character.  0(1) time complexity.
-   Note:  Does not parse; only verifies if message is well-formed */
-int Server::validate_msg(char *msg)
+/* Validates message to ensure it is well-formed.  A valid 
+   message has the form "TOKEN1;TOKEN2=TOKEN3;TOKEN4=TOKEN5;..." */
+bool Server::validate_msg(const std::string& msg)
 { 
-  size_t len = strlen(msg);           // strlen() does not count null char '\0'
-  if(len > 1 && msg[len-1] == ';') {  // shortest possible valid message is "x;"
-    return 0;    
+  if (msg.empty() || *(msg.end()-1) != ';') { 
+    return false;
   }
-  return -1;  // invalid message
+  std::istringstream iss{msg};                   // convert msg to input stream
+  std::string token;            
+  while (getline(iss, token, ';')) {             // extract tokens delimited by ';'
+    if (token.find('=') != std::string::npos) { 
+      std::istringstream sub_iss{token};
+      std::string subtoken1, subtoken2;
+      getline(sub_iss, subtoken1, '=');     
+      getline(sub_iss, subtoken2, '=');  
+      if(subtoken2.empty()) {
+        return false; 
+      }
+    }
+  }
+  return true;
 }
 
-/* Parses a validated message for commands and adds to command queue */
-void Server::parse_msg(const std::string& msg)
+/* Extracts tokens from a validated (well-formed) message and adds to queue */ 
+void Server::parse_msg(const std::string& msg, 
+  std::queue<std::string>& tokens, const char delimiter)
 {
-  std::istringstream iss{msg};
-  std::string token;
+  std::istringstream iss{msg};  // convert msg to input stream
+  std::string token;            
   int i = 0;
-  while(std::getline(iss, token, ';')) {  // delimiter is ';'
-    // std::cout << "parse_msg(): " << token << std::endl;
-    queue_.push(token);
+  while(std::getline(iss, token, delimiter)) {  // delimiter is ';'
+    if (i++ > 0) {
+      parse_msg(token, tokens, '=');            // delimiter is '='
+    } else {  // first token 
+      std::cout << token << std::endl;
+      tokens.push(token);
+      continue;
+    }
   }
 }
 
@@ -140,6 +158,8 @@ void Server::listen()
   struct sockaddr_storage client_inaddr;
   socklen_t addr_len = sizeof client_inaddr;  
 
+  std::queue<std::string> tokens{};
+
   /* Main recieve loop */
   while(1) { 
     /* Note: recvfrom() blocks and returns -1 if no data is recieved before timeout */
@@ -158,28 +178,29 @@ void Server::listen()
       get_inaddr((struct sockaddr *)&client_inaddr), client_ip, sizeof client_ip);
     
     buff[numbytes] = '\0';  // important to null terminate the message  
+
+    /* Convert message to std::string */
+    std::string msg{buff};
     
     /* Ensure message is well-formed */
-    if (validate_msg(buff) != 0) {
+    if (!validate_msg(msg)) {
       std::cerr << "server: invalid message recieved from "  << client_ip << std::endl;
-      continue;  // ignore invalid message and continue listening
+      continue;  // ignore invalid message; continue listening
     }
     
     /* Print info */
     std::cout << "server: got a UDP packet from " << client_ip << std::endl; 
-    std::cout << "server: packet contains: " << buff << std::endl;
+    std::cout << "server: packet contains: " << msg << std::endl;
     std::cout << "server: packet is " << numbytes << " bytes long" << std::endl;
 
     /* Check for "STOP;" command to stop listening and exit loop */
     std::string stop_msg{"STOP;"};
-    if (stop_msg == buff) {
+    if (msg == stop_msg) {
       break;
     }
 
-    /* Parse message for commands and add to queue */
-    std::string msg{buff};
-    parse_msg(msg);
-
+    /* Parse message for tokens and add to tokens queue */
+    parse_msg(msg, tokens, ';'); 
   }
   close(sockfd_);
 }

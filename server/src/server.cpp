@@ -38,9 +38,9 @@ Server::Server(unsigned port, unsigned timeout) :
   if (rv != 0) {
     throw std::runtime_error("error: getaddrinfo\n" + std::string{gai_strerror(rv)});
   }
-
-  sockfd_ = socket(timeout_);  // make socket and return socket descriptor
-  bind();                      // binds socket to user specified port
+  
+  /* Make socket with specified timeout, bind to port, and set socket descriptor */
+  sockfd_ = create_socket(timeout_);  
 
   /* Our class invariant is fully defined now (i.e.: devices of type 
      Server will always hold a valid UDP socket bound to user-specified 
@@ -106,21 +106,20 @@ void Server::parse_msg(const std::string& msg,
   }
 }
 
-int Server::socket(unsigned timeout)
+/* Traverse link-listed of addrinfo structures and create socket */
+int Server::create_socket(unsigned timeout)
 {
-  /* Traverse link-listed of addrinfo structures and create socket */
   int sockfd;
   struct addrinfo *rp = nullptr;
   for (rp = res_; rp != nullptr; rp = rp->ai_next) {
     /* Create socket and return descriptor */
-    sockfd = ::socket(rp->ai_family, 
+    sockfd = socket(rp->ai_family, 
       rp->ai_socktype,              
       rp->ai_protocol);
     if (sockfd == -1) {
       std::cerr << "error: create socket" << std::endl;
       continue;
     }
-
     /* Set socket options */
     struct timeval tv; 
     tv.tv_sec = timeout;
@@ -131,25 +130,27 @@ int Server::socket(unsigned timeout)
       &tv,
       sizeof(tv)
     );
+    /* If we reach end of results without success */
+    if (rp == nullptr) {
+      throw std::runtime_error("error: failed to create / bind socket");
+    }
+    /* Attempt to bind socket */
+    if (!bind_socket(sockfd, rp)) {
+      continue;  // keep cycling through linked-list
+    }
   }
+  /* Upon success */
   return sockfd;
 }
 
-void Server::bind() 
+bool Server::bind_socket(int sockfd, struct addrinfo *rp) 
 {
-  /* Traverse link-listed of addrinfo structures and bind to first valid socket */
-  struct addrinfo *rp = nullptr;
-  for (rp = res_; rp != nullptr; rp = rp->ai_next) {
-    if (::bind(sockfd_, rp->ai_addr, rp->ai_addrlen) == -1) { 
-      close(sockfd_);
-      std::cerr << "error: bind socket" << std::endl;
-      continue;
-    } else {          // if success
-      break; 
-    }
-  } 
-  if (rp == nullptr)  // if unable to bind with any result
-    throw std::runtime_error("error: failed to bind socket");
+  if (bind(sockfd, rp->ai_addr, rp->ai_addrlen) == -1) { 
+    close(sockfd);
+    std::cerr << "error: bind socket" << std::endl;
+    return false;
+  }
+  return true;
 }
 
 void Server::listen()

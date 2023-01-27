@@ -37,8 +37,9 @@ private:
   State state_;                    // device state  
   struct addrinfo *res_;           // holds linked-list of results 
 
-  int socket(unsigned timeout);
-  void bind();
+  int create_socket(unsigned timeout);
+
+  static bool bind_socket(int sockfd, struct addrinfo *rp);
   static void *get_inaddr(struct sockaddr *sa);      // returns IPv4 or IPv6 address 
   static bool validate_msg(const std::string& msg);  // ensure message is well-formed
   static void parse_msg(const std::string &msg,      // extract tokens

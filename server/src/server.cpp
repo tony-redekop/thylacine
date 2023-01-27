@@ -67,7 +67,7 @@ void * Server::get_inaddr(struct sockaddr *sa)
 
 /* Validation of message size and last character.  0(1) time complexity.
    Note:  Does not parse; only verifies if message is well-formed */
-int Server::validate_message(char *msg)
+int Server::validate_msg(char *msg)
 { 
   size_t len = strlen(msg);           // strlen() does not count null char '\0'
   if(len > 1 && msg[len-1] == ';') {  // shortest possible valid message is "x;"
@@ -77,13 +77,13 @@ int Server::validate_message(char *msg)
 }
 
 /* Parses a validated message for commands and adds to command queue */
-void Server::parse_message(const std::string& msg)
+void Server::parse_msg(const std::string& msg)
 {
   std::istringstream iss{msg};
   std::string token;
   int i = 0;
   while(std::getline(iss, token, ';')) {  // delimiter is ';'
-    // std::cout << "parse_message(): " << token << std::endl;
+    // std::cout << "parse_msg(): " << token << std::endl;
     queue_.push(token);
   }
 }
@@ -160,7 +160,7 @@ void Server::listen()
     buff[numbytes] = '\0';  // important to null terminate the message  
     
     /* Ensure message is well-formed */
-    if (validate_message(buff) != 0) {
+    if (validate_msg(buff) != 0) {
       std::cerr << "server: invalid message recieved from "  << client_ip << std::endl;
       continue;  // ignore invalid message and continue listening
     }
@@ -176,9 +176,9 @@ void Server::listen()
       break;
     }
 
-    /* Parse message for commands */
+    /* Parse message for commands and add to queue */
     std::string msg{buff};
-    parse_message(msg);
+    parse_msg(msg);
 
   }
   close(sockfd_);

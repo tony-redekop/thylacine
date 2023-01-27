@@ -32,21 +32,22 @@ public:
 
 private:
   unsigned port_;           
-  unsigned timeout_;       // timeout for recieving (listening) 
-  int sockfd_;             // socket descriptor
-  State state_;            // device state  
-  struct addrinfo *res_;   // holds linked-list of results 
+  unsigned timeout_;               // timeout for recieving (listening) 
+  int sockfd_;                     // socket descriptor
+  State state_;                    // device state  
+  struct addrinfo *res_;           // holds linked-list of results 
 
-  std::queue<std::string> queue_;  // stores commands in FIFO order
+  /* Message handling */
+  void parse_msg(const std::string &msg);  // parse for commands and add to queue
+  std::queue<std::string> queue_;          // command queue 
 
+  /* Socket implementation methods */
   int socket(unsigned timeout);
   void bind();
-  void parse_message(const std::string &msg);          // parse message for commands
-
-  /* Helper functions */
-  static void *get_inaddr(struct sockaddr *sa); // returns IPv4 or IPv6 address 
-  static int validate_message(char *msg);        // ensure message is well-formed
-  
+ 
+  /* Helper functions (not tied to object state) */
+  static void *get_inaddr(struct sockaddr *sa);  // returns IPv4 or IPv6 address 
+  static int validate_msg(char *msg);            // ensure message is well-formed
 };
 
 }; // namespace thylacine

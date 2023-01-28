@@ -82,7 +82,7 @@ bool Server::validate_msg(const std::string& msg)
 }
 
 /* Recursively tokenize a valid (well-formed) message and add tokens to queue */ 
-void Server::parse_msg(const std::string& msg, 
+void Server::tokenize_msg(const std::string& msg, 
   std::queue<std::string>& tokens, const char delimiter)
 {
   std::istringstream iss{msg};  // convert msg to input stream
@@ -90,7 +90,7 @@ void Server::parse_msg(const std::string& msg,
   int i = 0;
   while(std::getline(iss, token, delimiter)) {  // delimiter is ';'
     if (i++ > 0) {
-      parse_msg(token, tokens, '=');            // delimiter is '='
+      tokenize_msg(token, tokens, '=');
     } else {  // first token 
       std::cout << token << std::endl;
       tokens.push(token);
@@ -194,7 +194,7 @@ void Server::listen()
     }
 
     /* Parse message for tokens and add to tokens queue */
-    parse_msg(msg, tokens, ';'); 
+    tokenize_msg(msg, tokens, ';'); 
   }
   close(sockfd_);
 }

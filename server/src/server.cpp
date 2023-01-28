@@ -10,6 +10,8 @@
 
 namespace thylacine {
 
+/* Define our class invariant (i.e. devices of type Server will always hold 
+   a valid UDP socket bound to user-specified port with optional timeout) */
 Server::Server(unsigned port, unsigned timeout) : 
   port_{port}, 
   timeout_{timeout}, 
@@ -17,19 +19,16 @@ Server::Server(unsigned port, unsigned timeout) :
   res_{nullptr}, 
   state_{State::IDLE}
 {
-
   /* Bounds checking */
   if (port < 1 || port > 65535) {
     throw std::range_error("error: port number out of range");
   }
-
   /* Pre-configure address structures. */
   struct addrinfo hints;
   memset(&hints, 0, sizeof(hints)); 
   hints.ai_family = AF_INET6;        // use IPv6                         
   hints.ai_socktype = SOCK_DGRAM;    // UDP socket 
   hints.ai_flags = AI_PASSIVE;       // use host IP address 
-
   /* Generate address structures */ 
   int rv = getaddrinfo(NULL,         // use host IP address
     std::to_string(port_).c_str(),   // port must be const char *
@@ -38,13 +37,8 @@ Server::Server(unsigned port, unsigned timeout) :
   if (rv != 0) {
     throw std::runtime_error("error: getaddrinfo\n" + std::string{gai_strerror(rv)});
   }
-  
   /* Make socket with specified timeout, bind to port, and set socket descriptor */
   sockfd_ = create_socket(timeout_);  
-
-  /* Our class invariant is fully defined now (i.e.: devices of type 
-     Server will always hold a valid UDP socket bound to user-specified 
-     port with optional timeout. Default device state is State::IDLE */
 }
 
 Server::~Server() 
@@ -65,8 +59,7 @@ void * Server::get_inaddr(struct sockaddr *sa)
   return nullptr;
 }
 
-/* Validates message to ensure it is well-formed.  A valid 
-   message has the form "TOKEN1;TOKEN2=TOKEN3;TOKEN4=TOKEN5;..." */
+/* Validates message to ensure it is well-formed (i.e. TOKEN1;TOKEN2=TOKEN3;...) */
 bool Server::validate_msg(const std::string& msg)
 { 
   if (msg.empty() || *(msg.end()-1) != ';') { 
@@ -88,7 +81,7 @@ bool Server::validate_msg(const std::string& msg)
   return true;
 }
 
-/* Extracts tokens from a validated (well-formed) message and adds to queue */ 
+/* Recursively tokenize a valid (well-formed) message and add tokens to queue */ 
 void Server::parse_msg(const std::string& msg, 
   std::queue<std::string>& tokens, const char delimiter)
 {

@@ -1,4 +1,5 @@
 #include <string>
+#include <vector>
 #include <cstring>
 #include <iostream>
 #include <sstream>
@@ -7,6 +8,9 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include "server.hpp"
+
+using std::string;
+using std::vector;
 
 namespace thylacine {
 
@@ -99,6 +103,92 @@ void Server::tokenize_msg(const std::string& msg,
   }
 }
 
+/* Generates an AST (abstract syntax tree) from stream of tokens.
+   Given the token stream: TEST CMD START DURATION 60 RATE 1000 
+   generated from string "TEST;CMD=START;DURATION=60;RATE=1000;"
+   parse_tokens will produce the following data structure:
+
+   std::vector<std::map<string, std::pair<string, string>>> ast = {
+     {{"func",  {"TEST", ""}}},
+     {{"param", {"CMD", "START"}}},
+     {{"param", {"DURATION", "60"}}},
+     {{"param", {"RATE", "1000"}}}
+   }; */
+bool Server::parse_tokens(std::queue<string>& tokens, 
+  std::vector<std::map<string, std::pair<string, string>>>& ast) {
+  /* Check for valid function name */
+  string func{tokens.front()};  // first token is the function name
+  if (valid_functions.find(func) == valid_functions.end()) {
+    std::cerr << "parse_tokens() : Invalid function name" << std::endl; 
+    return false;
+  } else {
+    tokens.pop();  // if valid token
+  } 
+  /* Calculate number of parameters required for the function */
+  unsigned numreq = valid_functions[func].size();
+  std::cout << "This function requires (" << numreq << ") parameter(s)" << std::endl;
+  
+  /* Build first node (function name) */
+  ast.push_back({{"func", std::make_pair(func, "")}});  
+  
+  /* Validate parameters */
+  string param{};
+  string paramval{};
+
+  for (int i = 0; i < numreq; ++i) {
+    std::pair<string, string> namevalpair{};
+    /* Validate number of params */
+    if (tokens.empty()) {
+      std::cerr << "parse_tokens() : Invalid number of parameters" << std::endl; 
+      return false; 
+    }
+    /* Get parameter name */
+    param = tokens.front();  
+
+    /* Validate parameter name */
+    if (valid_functions[func].find(param) == valid_functions[func].end()) {
+      std::cerr << "parse_tokens() : Invalid parameter name" << std::endl; 
+      return false;
+    } else { // parameter name is valid
+      tokens.pop();
+    }
+    if (tokens.empty()) {
+      std::cerr << "parse_tokens() : Missing parameter value" << std::endl; 
+      return false; 
+    }
+    /* Get parameter value */
+    paramval = tokens.front();
+
+    /* Validate the parameter value and type */ 
+    string paramtype{valid_functions[func][param]};  // holds the required type 
+    if (paramtype == "int") {
+      try {
+        paramval = std::stoi(paramval);
+      }
+      catch(std::invalid_argument& ex) {
+        std::cerr << "parse_tokens(): error: invalid arg type, expected 'int'" << std::endl;
+        return false;
+      }
+      catch(std::out_of_range& ex) {
+        std::cerr << "parse_tokens(): error: argument value out of range" << std::endl;
+        return false;
+      }
+    } else if (paramtype == "Command") {
+        if (Commands.find(paramval) == Commands.end()) {
+          std::cerr << "parse_tokens(): error: invalid arg type, expected Command" << std::endl;
+          return false;
+        }
+    }
+    tokens.pop();
+    /* Add node to our AST */
+    ast.push_back(std::map<string, std::pair<string, string>>{
+      {"param", std::make_pair(param, paramval)}
+    });  
+  }
+
+  return true;
+}
+
 /* Traverse link-listed of addrinfo structures and create socket */
 int Server::create_socket(unsigned timeout)
 {
@@ -152,7 +242,8 @@ void Server::listen()
   struct sockaddr_storage client_inaddr;
   socklen_t addr_len = sizeof client_inaddr;  
 
-  std::queue<std::string> tokens{};
+  std::queue<string> tokens{};                                // holds "stream" of tokens
+  vector<std::map<string, std::pair<string, string>>> ast{};  // holds AST built from token stream
 
   /* Main recieve loop */
   while(1) { 
@@ -195,6 +286,16 @@ void Server::listen()
 
     /* Parse message for tokens and add to tokens queue */
     tokenize_msg(msg, tokens, ';'); 
+
+    /* Parse tokens to build AST (abstract syntax tree) */
+    if(!parse_tokens(tokens, ast)) {
+      std::cerr << "server: error invalid tokens" << std::endl;
+      tokens = {};  // clear our queue of tokens
+      ast.clear();  // clear our AST 
+      continue;     // continue listening
+    } else {
+      std::cout << "server: all tokens parsed!" << std::endl;
+    }
   }
   close(sockfd_);
 }

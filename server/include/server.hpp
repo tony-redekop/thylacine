@@ -1,24 +1,28 @@
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
+#include <map>
+#include <queue>
+#include <string>
+#include <unordered_set>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <string>
 #include <netdb.h>
-#include <queue>
-#include <set>
 
 namespace thylacine {
 
 /* Globals */
-constexpr int MAXBUFFLEN = 256;         // device buffer max length
-const std::set<std::string> Command {  // commands available to the client
-  "ID",
-  "TEST", 
-  "CMD=START", 
-  "CMD=STOP"
+constexpr int MAXBUFFLEN = 256;  // device buffer max length
+enum State { IDLE, LISTENING };  // possible device states
+
+/* Define valid functions, parameters, and parameter types available to the client */
+inline std::unordered_set<std::string> Commands { "START", "STOP" }; 
+inline std::map<std::string, std::map<std::string, std::string>> valid_functions = {
+  {"ID",   {{}}}, 
+  {"TEST", {{"CMD", "Command"},
+            {"DURATION", "int"},
+            {"RATE", "int"}}}
 };
-enum State { IDLE, LISTENING };         // possible device states
 
 /* Defines interface for our I/O device */
 class Server {
@@ -38,6 +42,8 @@ private:
   struct addrinfo *res_;           // holds linked-list of results 
 
   int create_socket(unsigned timeout);
+  bool parse_tokens(std::queue<std::string>& tokens,
+    std::vector<std::map<std::string, std::pair<std::string, std::string>>>& ast);
 
   static bool bind_socket(int sockfd, struct addrinfo *rp);
   static void *get_inaddr(struct sockaddr *sa);      // returns IPv4 or IPv6 address 

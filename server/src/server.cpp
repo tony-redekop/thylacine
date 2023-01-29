@@ -14,8 +14,10 @@ using std::vector;
 
 namespace thylacine {
 
-/* Define our class invariant (i.e. devices of type Server will always hold 
-   a valid UDP socket bound to user-specified port with optional timeout) */
+/** 
+ * Define class invariant (i.e. devices of type Server will always hold 
+ * a valid UDP socket bound to user-specified port with optional timeout)
+ */
 Server::Server(unsigned port, unsigned timeout) : 
   port_{port}, 
   timeout_{timeout}, 
@@ -23,17 +25,17 @@ Server::Server(unsigned port, unsigned timeout) :
   res_{nullptr}, 
   state_{State::IDLE}
 {
-  /* Bounds checking */
+  // Bounds checking
   if (port < 1 || port > 65535) {
     throw std::range_error("error: port number out of range");
   }
-  /* Pre-configure address structures. */
+  // Pre-configure address structures.
   struct addrinfo hints;
   memset(&hints, 0, sizeof(hints)); 
   hints.ai_family = AF_INET6;        // use IPv6                         
   hints.ai_socktype = SOCK_DGRAM;    // UDP socket 
   hints.ai_flags = AI_PASSIVE;       // use host IP address 
-  /* Generate address structures */ 
+  // Generate address structures  
   int rv = getaddrinfo(NULL,         // use host IP address
     std::to_string(port_).c_str(),   // port must be const char *
     &hints,                          // hints_ used for pre-configuration
@@ -41,10 +43,13 @@ Server::Server(unsigned port, unsigned timeout) :
   if (rv != 0) {
     throw std::runtime_error("error: getaddrinfo\n" + std::string{gai_strerror(rv)});
   }
-  /* Make socket with specified timeout, bind to port, and set socket descriptor */
+  // Make socket with specified timeout, bind to port, and set socket descriptor
   sockfd_ = create_socket(timeout_);  
 }
 
+/**
+ * Destroy all humans
+ */
 Server::~Server() 
 {
   if (res_) {
@@ -53,7 +58,9 @@ Server::~Server()
   }
 }
 
- /* Returns struct in_addr * (IPv4) or struct in6_addr * (IPv6) */
+/**
+ * Returns struct in_addr * (IPv4) or struct in6_addr * (IPv6)
+ */
 void * Server::get_inaddr(struct sockaddr *sa)
 {
   if(sa->sa_family == AF_INET)
@@ -63,15 +70,19 @@ void * Server::get_inaddr(struct sockaddr *sa)
   return nullptr;
 }
 
-/* Validates message to ensure it is well-formed (i.e. TOKEN1;TOKEN2=TOKEN3;...) */
+/** 
+ * Validates message to ensure it is well-formed (i.e. TOKEN1;TOKEN2=TOKEN3;...) 
+ */
 bool Server::validate_msg(const std::string& msg)
 { 
+  // Edge-case: Ignore empty messages or those not terminating with ';'
   if (msg.empty() || *(msg.end()-1) != ';') { 
     return false;
   }
-  std::istringstream iss{msg};                   // convert msg to input stream
+  // Convert message to input stream and check form 
+  std::istringstream iss{msg};
   std::string token;            
-  while (getline(iss, token, ';')) {             // extract tokens delimited by ';'
+  while (getline(iss, token, ';')) {  
     if (token.find('=') != std::string::npos) { 
       std::istringstream sub_iss{token};
       std::string subtoken1, subtoken2;
@@ -85,17 +96,20 @@ bool Server::validate_msg(const std::string& msg)
   return true;
 }
 
-/* Recursively tokenize a valid (well-formed) message and add tokens to queue */ 
+/** 
+ * Recursively tokenize a valid (well-formed) message and add each token to 
+ * the queue passed in by reference, creating a stream of tokens.
+ */
 void Server::tokenize_msg(const std::string& msg, 
   std::queue<std::string>& tokens, const char delimiter)
 {
-  std::istringstream iss{msg};  // convert msg to input stream
+  std::istringstream iss{msg};                 
   std::string token;            
   int i = 0;
-  while(std::getline(iss, token, delimiter)) {  // delimiter is ';'
+  while(std::getline(iss, token, delimiter)) {  
     if (i++ > 0) {
       tokenize_msg(token, tokens, '=');
-    } else {  // first token 
+    } else {  // if first token; exit condition
       std::cout << token << std::endl;
       tokens.push(token);
       continue;
@@ -103,49 +117,45 @@ void Server::tokenize_msg(const std::string& msg,
   }
 }
 
-/* Generates an AST (abstract syntax tree) from stream of tokens.
-   Given the token stream: TEST CMD START DURATION 60 RATE 1000 
-   generated from string "TEST;CMD=START;DURATION=60;RATE=1000;"
-   parse_tokens will produce the following data structure:
-
-   std::vector<std::map<string, std::pair<string, string>>> ast = {
-     {{"func",  {"TEST", ""}}},
-     {{"param", {"CMD", "START"}}},
-     {{"param", {"DURATION", "60"}}},
-     {{"param", {"RATE", "1000"}}}
-   }; */
+/** 
+ * Validates a token stream and generates an AST (abstract syntax tree) with the form:
+ *  std::vector<std::map<string, std::pair<string, string>>> ast = {
+ *    {{"func",  {"TEST", ""}}},
+ *    {{"param", {"CMD", "START"}}},
+ *    {{"param", {"DURATION", "60"}}},
+ *    {{"param", {"RATE", "1000"}}}};
+ */
 bool Server::parse_tokens(std::queue<string>& tokens, 
   std::vector<std::map<string, std::pair<string, string>>>& ast) {
-  /* Check for valid function name */
-  string func{tokens.front()};  // first token is the function name
+  // Check first token for valid function name
+  string func{tokens.front()};
   if (valid_functions.find(func) == valid_functions.end()) {
     std::cerr << "parse_tokens() : Invalid function name" << std::endl; 
     return false;
-  } else {
-    tokens.pop();  // if valid token
+  } else {        // if valid token
+    tokens.pop(); // we are done with first token
   } 
-  /* Calculate number of parameters required for the function */
+  // Calculate number of parameters required for the given function.
   unsigned numreq = valid_functions[func].size();
   std::cout << "This function requires (" << numreq << ") parameter(s)" << std::endl;
-  
-  /* Build first node (function name) */
+
+  // Add first node (function name)
   ast.push_back({{"func", std::make_pair(func, "")}});  
   
-  /* Validate parameters */
-  string param{};
-  string paramval{};
+  string param{};     // holds parameter name
+  string paramval{};  // holds parameter value
 
+  // Validates the number of parameters, parameter name, and type; if good, add node to AST
   for (int i = 0; i < numreq; ++i) {
     std::pair<string, string> namevalpair{};
-    /* Validate number of params */
+    // Validate number of parameters
     if (tokens.empty()) {
       std::cerr << "parse_tokens() : Invalid number of parameters" << std::endl; 
       return false; 
     }
-    /* Get parameter name */
-    param = tokens.front();  
-
-    /* Validate parameter name */
+    // Get next token (parameter name) 
+    param = tokens.front(); 
+    // Validate parameter name
     if (valid_functions[func].find(param) == valid_functions[func].end()) {
       std::cerr << "parse_tokens() : Invalid parameter name" << std::endl; 
       return false;
@@ -156,10 +166,9 @@ bool Server::parse_tokens(std::queue<string>& tokens,
       std::cerr << "parse_tokens() : Missing parameter value" << std::endl; 
       return false; 
     }
-    /* Get parameter value */
+    // Get parameter value
     paramval = tokens.front();
-
-    /* Validate the parameter value and type */ 
+    // Validate parameter value and parameter type
     string paramtype{valid_functions[func][param]};  // holds the required type 
     if (paramtype == "int") {
       try {
@@ -179,23 +188,25 @@ bool Server::parse_tokens(std::queue<string>& tokens,
           return false;
         }
     }
-    tokens.pop();
-    /* Add node to our AST */
+    // Add node to our AST */ 
     ast.push_back(std::map<string, std::pair<string, string>>{
       {"param", std::make_pair(param, paramval)}
     });  
+    tokens.pop();  // we are done with this token
+    // Continue looping through remaining tokens
   }
-
   return true;
 }
 
-/* Traverse link-listed of addrinfo structures and create socket */
+/** 
+ * Traverse link-listed of addrinfo structures and create socket
+ */
 int Server::create_socket(unsigned timeout)
 {
   int sockfd;
   struct addrinfo *rp = nullptr;
   for (rp = res_; rp != nullptr; rp = rp->ai_next) {
-    /* Create socket and return descriptor */
+    // Create socket and return descriptor
     sockfd = socket(rp->ai_family, 
       rp->ai_socktype,              
       rp->ai_protocol);
@@ -203,7 +214,7 @@ int Server::create_socket(unsigned timeout)
       std::cerr << "error: create socket" << std::endl;
       continue;
     }
-    /* Set socket options */
+    // Set socket options
     struct timeval tv; 
     tv.tv_sec = timeout;
     tv.tv_usec = 0;
@@ -213,19 +224,22 @@ int Server::create_socket(unsigned timeout)
       &tv,
       sizeof(tv)
     );
-    /* If we reach end of results without success */
+    // If we reach end of results without success
     if (rp == nullptr) {
       throw std::runtime_error("error: failed to create / bind socket");
     }
-    /* Attempt to bind socket */
+    // Attempt to bind socket
     if (!bind_socket(sockfd, rp)) {
       continue;  // keep cycling through linked-list
     }
   }
-  /* Upon success */
+  // Upon success
   return sockfd;
 }
 
+/**
+ * Binds socket
+ */
 bool Server::bind_socket(int sockfd, struct addrinfo *rp) 
 {
   if (bind(sockfd, rp->ai_addr, rp->ai_addrlen) == -1) { 
@@ -245,9 +259,9 @@ void Server::listen()
   std::queue<string> tokens{};                                // holds "stream" of tokens
   vector<std::map<string, std::pair<string, string>>> ast{};  // holds AST built from token stream
 
-  /* Main recieve loop */
+  // Main recieve loop
   while(1) { 
-    /* Note: recvfrom() blocks and returns -1 if no data is recieved before timeout */
+    // Note: recvfrom() blocks and returns -1 if no data is recieved before timeout
     int numbytes = recvfrom(sockfd_,  
       buff,
       MAXBUFFLEN-1,
@@ -257,37 +271,37 @@ void Server::listen()
     if (numbytes == -1) { 
       throw std::runtime_error("error: recvfrom()");
     }
-    
+      
     char client_ip[INET6_ADDRSTRLEN];
     inet_ntop(client_inaddr.ss_family,
       get_inaddr((struct sockaddr *)&client_inaddr), client_ip, sizeof client_ip);
     
     buff[numbytes] = '\0';  // important to null terminate the message  
 
-    /* Convert message to std::string */
+    // Convert message to std::string
     std::string msg{buff};
     
-    /* Ensure message is well-formed */
+    // Ensure message is well-formed
     if (!validate_msg(msg)) {
       std::cerr << "server: invalid message recieved from "  << client_ip << std::endl;
       continue;  // ignore invalid message; continue listening
     }
     
-    /* Print info */
+    // Print info 
     std::cout << "server: got a UDP packet from " << client_ip << std::endl; 
     std::cout << "server: packet contains: " << msg << std::endl;
     std::cout << "server: packet is " << numbytes << " bytes long" << std::endl;
 
-    /* Check for "STOP;" command to stop listening and exit loop */
+    // Check for "STOP;" command to stop listening and exit loop
     std::string stop_msg{"STOP;"};
     if (msg == stop_msg) {
       break;
     }
 
-    /* Parse message for tokens and add to tokens queue */
+    // Parse message for tokens and add to tokens queue
     tokenize_msg(msg, tokens, ';'); 
 
-    /* Parse tokens to build AST (abstract syntax tree) */
+    // Parse tokens to build AST (abstract syntax tree)
     if(!parse_tokens(tokens, ast)) {
       std::cerr << "server: error invalid tokens" << std::endl;
       tokens = {};  // clear our queue of tokens

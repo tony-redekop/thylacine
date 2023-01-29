@@ -34,7 +34,8 @@ Server::Server(unsigned port, unsigned timeout) :
   timeout_{timeout}, 
   sockfd_{-1}, 
   res_{nullptr}, 
-  state_{State::IDLE}
+  state_{State::IDLE},
+  id_{std::make_pair("ID","SN")}
 {
   // Bounds checking
   if (port < 1 || port > 65535) {

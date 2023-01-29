@@ -15,20 +15,12 @@ namespace thylacine {
 constexpr int MAXBUFFLEN = 256;  // device buffer max length
 enum State { IDLE, LISTENING };  // possible device states
 
-// Define valid functions, parameters, and parameter types available to the client
-inline std::unordered_set<std::string> Commands { "START", "STOP" }; 
-inline std::map<std::string, std::map<std::string, std::string>> valid_functions = {
-  {"ID",   {{}}}, 
-  {"TEST", {{"CMD", "Command"},
-            {"DURATION", "int"},
-            {"RATE", "int"}}}
-};
-
 // Defines interface for our I/O device
 class Server {
 public:
   Server(unsigned port, unsigned timeout = 0);
   ~Server();
+
   // Public methods
   void listen();
   inline State get_state() { return state_; }
@@ -40,13 +32,20 @@ private:
   State state_;           // device state  
   struct addrinfo *res_;  // holds linked-list of results 
 
+  // Static member constants
+  static const std::unordered_set<std::string> Commands; 
+  static const std::map<std::string, std::map<std::string, std::string>> ValidFuncs;
+
+  // Socket implementation methods 
   int create_socket(unsigned timeout);
-  static bool bind_socket(int sockfd, struct addrinfo *rp);
-  static void *get_inaddr(struct sockaddr *sa);             // returns IPv4 or IPv6 address 
-  static bool validate_msg(const std::string& msg);         // ensure message is well-formed
-  static void tokenize_msg(const std::string &msg,          // extract tokens
+  bool bind_socket(int sockfd, struct addrinfo *rp);
+
+  // Utility functions (may be refactored later into separate classes)
+  static void *get_inaddr(struct sockaddr *sa);              // returns IPv4 or IPv6 address 
+  static bool validate_msg(const std::string& msg);          // ensure message is well-formed
+  static void tokenize_msg(const std::string &msg,           // extract tokens
     std::queue<std::string>& tokens, const char delimiter);
-  static bool parse_tokens(std::queue<std::sting>& tokens,  // validates tokens; builds AST
+  static bool parse_tokens(std::queue<std::string>& tokens,  // validates tokens; builds AST
     std::vector<std::map<std::string, std::pair<std::string, std::string>>>& ast);
 };
 

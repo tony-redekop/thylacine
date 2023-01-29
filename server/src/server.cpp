@@ -15,6 +15,17 @@ using std::vector;
 namespace thylacine {
 
 /** 
+ *  Define static constants 
+ */
+const std::unordered_set<std::string> Server::Commands { "START", "STOP" }; 
+const std::map<std::string, std::map<std::string, std::string>> Server::ValidFuncs = {
+  {"ID",   {{}}}, 
+  {"TEST", {{"CMD", "Command"},
+            {"DURATION", "int"},
+            {"RATE", "int"}}}
+};
+
+/** 
  * Define class invariant (i.e. devices of type Server will always hold 
  * a valid UDP socket bound to user-specified port with optional timeout)
  */
@@ -129,14 +140,14 @@ bool Server::parse_tokens(std::queue<string>& tokens,
   std::vector<std::map<string, std::pair<string, string>>>& ast) {
   // Check first token for valid function name
   string func{tokens.front()};
-  if (valid_functions.find(func) == valid_functions.end()) {
+  if (ValidFuncs.find(func) == ValidFuncs.end()) {
     std::cerr << "parse_tokens() : Invalid function name" << std::endl; 
     return false;
   } else {        // if valid token
     tokens.pop(); // we are done with first token
   } 
   // Calculate number of parameters required for the given function.
-  unsigned numreq = valid_functions[func].size();
+  unsigned numreq = ValidFuncs.at(func).size();
   std::cout << "This function requires (" << numreq << ") parameter(s)" << std::endl;
 
   // Add first node (function name)
@@ -156,7 +167,7 @@ bool Server::parse_tokens(std::queue<string>& tokens,
     // Get next token (parameter name) 
     param = tokens.front(); 
     // Validate parameter name
-    if (valid_functions[func].find(param) == valid_functions[func].end()) {
+    if (ValidFuncs.at(func).find(param) == ValidFuncs.at(func).end()) {
       std::cerr << "parse_tokens() : Invalid parameter name" << std::endl; 
       return false;
     } else { // parameter name is valid
@@ -169,7 +180,7 @@ bool Server::parse_tokens(std::queue<string>& tokens,
     // Get parameter value
     paramval = tokens.front();
     // Validate parameter value and parameter type
-    string paramtype{valid_functions[func][param]};  // holds the required type 
+    string paramtype{ValidFuncs.at(func).at(param)};  // holds the required type 
     if (paramtype == "int") {
       try {
         paramval = std::stoi(paramval);
@@ -250,6 +261,9 @@ bool Server::bind_socket(int sockfd, struct addrinfo *rp)
   return true;
 }
 
+/**
+ *  Start server to listen for UDP packets on specified port
+ */
 void Server::listen()
 {
   char buff[MAXBUFFLEN];

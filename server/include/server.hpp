@@ -5,6 +5,8 @@
 #include <queue>
 #include <string>
 #include <unordered_set>
+#include <variant>
+#include <iostream>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netdb.h>
@@ -47,18 +49,21 @@ private:
   int create_socket(unsigned timeout);
   bool bind_socket(int sockfd, struct addrinfo *rp);
 
-  // Utility functions (may be refactored later into separate classes)
+  // Utility functions
   static void *get_inaddr(struct sockaddr *sa);               // returns IPv4 or IPv6 address 
   static bool validate_msg(const std::string& msg);           // ensure message is well-formed
   static void tokenize_msg(const std::string& msg,            // extract tokens
     std::queue<std::string>& tokens, const char delimiter);
-  static bool parse_tokens(std::queue<std::string>& tokens);  // validates tokens; generates callable 
+  static bool parse_tokens(std::queue<std::string>& tokens,   // validates tokens; builds AST 
+    std::map<std::string, std::map<std::string, 
+    std::variant<int, std::string>>>& ast);
 };
 
 template<typename T>
 int Server::test(std::map<std::string, T> params) 
 {
-  // params may be accessed by params["param1"]
+  // params may be accessed by params["param_name"]
+  std::cout << "test(): in test" << std::endl;
   return 0;
 }
 

@@ -130,12 +130,16 @@ void Server::tokenize_msg(const std::string& msg,
 }
 
 /** 
- * Validates a token stream and generate callable:
+ * Validates a token stream and builds an AST (abstract syntax tree) 
  */
-bool Server::parse_tokens(std::queue<string>& tokens) {
+bool Server::parse_tokens(std::queue<string>& tokens,
+  std::map<string, std::map<string, std::variant<int, string>>>& ast)
+{
+  std::map<string, std::variant<int, string>> param_map;
+
   // Check first token for valid function name
-  string func{tokens.front()};
-  if (ParamMap.find(func) == ParamMap.end()) {
+  string funcname{tokens.front()};
+  if (ParamMap.find(funcname) == ParamMap.end()) {
     std::cerr << "parse_tokens() : Invalid function name" << std::endl; 
     return false;
   } else {        // if valid token
@@ -143,7 +147,7 @@ bool Server::parse_tokens(std::queue<string>& tokens) {
   } 
 
   // Calculate number of parameters required for the given function.
-  unsigned numreq = ParamMap.at(func).size();
+  unsigned numreq = ParamMap.at(funcname).size();
   std::cout << "This function requires (" << numreq << ") parameter(s)" << std::endl;
 
   string paramname{};     // holds parameter name
@@ -160,7 +164,7 @@ bool Server::parse_tokens(std::queue<string>& tokens) {
     // Get next token (parameter name) 
     paramname = tokens.front(); 
     // Validate parameter name
-    if (ParamMap.at(func).find(paramname) == ParamMap.at(func).end()) {
+    if (ParamMap.at(funcname).find(paramname) == ParamMap.at(funcname).end()) {
       std::cerr << "parse_tokens() : Invalid parameter name" << std::endl; 
       return false;
     } else { // parameter name is valid
@@ -175,7 +179,7 @@ bool Server::parse_tokens(std::queue<string>& tokens) {
     paramval = tokens.front();
 
     // Validate parameter value and parameter type
-    string paramtype{ParamMap.at(func).at(paramname)};  // holds the required type 
+    string paramtype{ParamMap.at(funcname).at(paramname)};  // holds the required type 
     if (paramtype == "int") {
       try {
         paramval = std::stoi(paramval);
@@ -195,8 +199,11 @@ bool Server::parse_tokens(std::queue<string>& tokens) {
         }
     }
     tokens.pop();  // we are done with this token
+
+    param_map[paramname] = paramval;
     // Continue looping through remaining tokens
   }
+  ast[funcname] = param_map;
   return true;
 }
 
@@ -304,16 +311,26 @@ void Server::listen()
 
     // Parse message for tokens and add to tokens queue
     tokenize_msg(msg, tokens, ';'); 
+    
+    // AST (abstract syntax tree) 
+    // Note: refactor location of definition later 
+    std::map<string, std::map<string, std::variant<int, std::string>>> ast;     
 
-    // Parse tokens
-    if(!parse_tokens(tokens)) {
+    // Parse tokens to populate AST 
+    if (!parse_tokens(tokens, ast)) {
       std::cerr << "server: error invalid tokens" << std::endl;
       tokens = {};  // clear our queue of tokens
       continue;     // continue listening
     } else {
       std::cout << "server: all tokens parsed!" << std::endl;
     }
+
+    // Use AST to generate function call
+    if (ast.find("TEST") != ast.end()) {
+      test(ast.at("TEST"));  // call our function
+    }
   }
+
   close(sockfd_);
 }
 

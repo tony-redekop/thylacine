@@ -11,6 +11,7 @@
 
 using std::string;
 using std::vector;
+using std::map;
 
 namespace thylacine {
 
@@ -19,7 +20,7 @@ namespace thylacine {
  */
 const std::unordered_set<string> Server::Commands { "START", "STOP" }; 
 const std::map<string, std::map<string, string>> Server::ParamMap = {
-  {"ID",   {{}}}, 
+  {"ID",   {}}, 
   {"TEST", {{"CMD", "Command"},
             {"DURATION", "int"},
             {"RATE", "int"}}}
@@ -35,7 +36,7 @@ Server::Server(unsigned port, unsigned timeout) :
   sockfd_{-1}, 
   res_{nullptr}, 
   state_{State::IDLE},
-  id_{std::make_pair("ID","SN")}
+  id_{std::make_pair("PLUMBUS","SN001")}  // fixed ID/SN for now
 {
   // Bounds checking
   if (port < 1 || port > 65535) {
@@ -147,7 +148,8 @@ bool Server::parse_tokens(std::queue<string>& tokens,
   } 
 
   // Calculate number of parameters required for the given function.
-  unsigned numreq = ParamMap.at(funcname).size();
+  // unsigned numreq = ParamMap.at(funcname).size()
+  unsigned numreq = ParamMap.at(funcname).empty() ? 0 : ParamMap.at(funcname).size();
   std::cout << "This function requires (" << numreq << ") parameter(s)" << std::endl;
 
   string paramname{};     // holds parameter name
@@ -271,7 +273,7 @@ void Server::listen()
   std::queue<string> tokens{};  // holds "stream" of tokens
 
   // Main recieve loop
-  while(1) { 
+  while (1) { 
     // Note: recvfrom() blocks and returns -1 if no data is recieved before timeout
     int numbytes = recvfrom(sockfd_,  
       buff,
@@ -282,7 +284,7 @@ void Server::listen()
     if (numbytes == -1) { 
       throw std::runtime_error("error: recvfrom()");
     }
-      
+    
     char client_ip[INET6_ADDRSTRLEN];
     inet_ntop(client_inaddr.ss_family,
       get_inaddr((struct sockaddr *)&client_inaddr), client_ip, sizeof client_ip);
@@ -325,13 +327,18 @@ void Server::listen()
       std::cout << "server: all tokens parsed!" << std::endl;
     }
 
-    // Use AST to generate function call
+    // Use AST to generate function call, (refactor this later)
     if (ast.find("TEST") != ast.end()) {
-      test(ast.at("TEST"));  // call our function
+      device_test(ast.at("TEST"));  // call our function
+    }
+    if (ast.find("ID") != ast.end()) {
+      device_id();
     }
   }
 
   close(sockfd_);
 }
+
+
 
 }; // namespace thylacine

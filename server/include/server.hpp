@@ -22,13 +22,16 @@ class Server {
 public:
   Server(unsigned port, unsigned timeout = 0);
   ~Server();
+
+  // Server methods (not available to client)
   void listen();
 
-  // Device methods (available to client)
+  // Device methods (available to client through UDP)
   template<typename T>
-  int test(std::map<std::string, T> params); 
-  std::string id();
+  int device_test(std::map<std::string, T> params); 
+  inline std::string device_id();
 
+  // Getters, setters
   inline State get_state() { return state_; }
   inline std::string get_id() { return id_.first; }
   inline std::string get_sn() { return id_.second; }
@@ -59,12 +62,25 @@ private:
     std::variant<int, std::string>>>& ast);
 };
 
+/**
+ *  Device test
+ */
 template<typename T>
-int Server::test(std::map<std::string, T> params) 
+int Server::device_test(std::map<std::string, T> params) 
 {
   // params may be accessed by params["param_name"]
   std::cout << "test(): in test" << std::endl;
   return 0;
+}
+
+/**
+ * Returns device model ID and SN 
+ */
+std::string Server::device_id() 
+{
+  std::string id{"ID;MODEL=" + id_.first + ";" + "SERIAL=" + id_.second + ";"};
+  std::cout << id << std::endl;
+  return id;
 }
 
 }; // namespace thylacine

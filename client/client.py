@@ -3,7 +3,7 @@
 import socket
 
 UDP_IP = "localhost"
-UDP_PORT = 4955
+UDP_PORT = 4960
 
 MESSAGE1 = "ID;"
 MESSAGE2 = "TEST;CMD=START;DURATION=60;RATE=1000;"

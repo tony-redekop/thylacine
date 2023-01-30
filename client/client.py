@@ -2,17 +2,18 @@
 
 import socket
 
-UDP_IP = 'localhost'
+UDP_IP = "localhost"
 UDP_PORT = 4955
-STOP_MESSAGE = "STOP;"  # tell device to stop listening
-# MESSAGE = "Hello, we've been trying to reach you with regard to your vehicle's extended warranty"
 
-# getaddrinfo returns list of (5) tuples with structure 
-# [family, type, proto, canonname, sockaddr]
-# addrinfo = socket.getaddrinfo(UDP_IP, UDP_PORT)
+MESSAGE1 = "ID;"
+MESSAGE2 = "TEST;CMD=START;DURATION=60;RATE=1000;"
+MESSAGE3 = "STOP;"
+
+messages = [MESSAGE1, MESSAGE2, MESSAGE3]
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # create UDP socket object
 
-sock.sendto(STOP_MESSAGE.encode("iso-8859-1"), (UDP_IP, UDP_PORT)) 
+for message in messages:
+  sock.sendto(message.encode("iso-8859-1"), (UDP_IP, UDP_PORT)) 
 
 # print("Antonio Redekop")

@@ -130,15 +130,9 @@ void Server::tokenize_msg(const std::string& msg,
 }
 
 /** 
- * Validates a token stream and generates an AST (abstract syntax tree) with the form:
- *  std::vector<std::map<string, std::pair<string, string>>> ast = {
- *    {{"func",  {"TEST", ""}}},
- *    {{"param", {"CMD", "START"}}},
- *    {{"param", {"DURATION", "60"}}},
- *    {{"param", {"RATE", "1000"}}}};
+ * Validates a token stream and generate callable:
  */
-bool Server::parse_tokens(std::queue<string>& tokens, 
-  std::vector<std::map<string, std::pair<string, string>>>& ast) {
+bool Server::parse_tokens(std::queue<string>& tokens) {
   // Check first token for valid function name
   string func{tokens.front()};
   if (ParamMap.find(func) == ParamMap.end()) {
@@ -147,28 +141,26 @@ bool Server::parse_tokens(std::queue<string>& tokens,
   } else {        // if valid token
     tokens.pop(); // we are done with first token
   } 
+
   // Calculate number of parameters required for the given function.
   unsigned numreq = ParamMap.at(func).size();
   std::cout << "This function requires (" << numreq << ") parameter(s)" << std::endl;
 
-  // Add first node (function name)
-  ast.push_back({{"func", std::make_pair(func, "")}});  
-  
-  string param{};     // holds parameter name
+  string paramname{};     // holds parameter name
   string paramval{};  // holds parameter value
 
-  // Validates the number of parameters, parameter name, and type; if good, add node to AST
+  // Validates the number of parameters, parameter name, and type
   for (int i = 0; i < numreq; ++i) {
-    std::pair<string, string> namevalpair{};
     // Validate number of parameters
     if (tokens.empty()) {
       std::cerr << "parse_tokens() : Invalid number of parameters" << std::endl; 
       return false; 
     }
+
     // Get next token (parameter name) 
-    param = tokens.front(); 
+    paramname = tokens.front(); 
     // Validate parameter name
-    if (ParamMap.at(func).find(param) == ParamMap.at(func).end()) {
+    if (ParamMap.at(func).find(paramname) == ParamMap.at(func).end()) {
       std::cerr << "parse_tokens() : Invalid parameter name" << std::endl; 
       return false;
     } else { // parameter name is valid
@@ -178,10 +170,12 @@ bool Server::parse_tokens(std::queue<string>& tokens,
       std::cerr << "parse_tokens() : Missing parameter value" << std::endl; 
       return false; 
     }
+
     // Get parameter value
     paramval = tokens.front();
+
     // Validate parameter value and parameter type
-    string paramtype{ParamMap.at(func).at(param)};  // holds the required type 
+    string paramtype{ParamMap.at(func).at(paramname)};  // holds the required type 
     if (paramtype == "int") {
       try {
         paramval = std::stoi(paramval);
@@ -200,10 +194,6 @@ bool Server::parse_tokens(std::queue<string>& tokens,
           return false;
         }
     }
-    // Add node to our AST */ 
-    ast.push_back(std::map<string, std::pair<string, string>>{
-      {"param", std::make_pair(param, paramval)}
-    });  
     tokens.pop();  // we are done with this token
     // Continue looping through remaining tokens
   }
@@ -271,8 +261,7 @@ void Server::listen()
   struct sockaddr_storage client_inaddr;
   socklen_t addr_len = sizeof client_inaddr;  
 
-  std::queue<string> tokens{};                                // holds "stream" of tokens
-  vector<std::map<string, std::pair<string, string>>> ast{};  // holds AST built from token stream
+  std::queue<string> tokens{};  // holds "stream" of tokens
 
   // Main recieve loop
   while(1) { 
@@ -316,11 +305,10 @@ void Server::listen()
     // Parse message for tokens and add to tokens queue
     tokenize_msg(msg, tokens, ';'); 
 
-    // Parse tokens to build AST (abstract syntax tree)
-    if(!parse_tokens(tokens, ast)) {
+    // Parse tokens
+    if(!parse_tokens(tokens)) {
       std::cerr << "server: error invalid tokens" << std::endl;
       tokens = {};  // clear our queue of tokens
-      ast.clear();  // clear our AST 
       continue;     // continue listening
     } else {
       std::cout << "server: all tokens parsed!" << std::endl;

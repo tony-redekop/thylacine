@@ -21,6 +21,12 @@ public:
   Server(unsigned port, unsigned timeout = 0);
   ~Server();
   void listen();
+
+  // Device methods (available to client)
+  template<typename T>
+  int test(std::map<std::string, T> params); 
+  std::string id();
+
   inline State get_state() { return state_; }
   inline std::string get_id() { return id_.first; }
   inline std::string get_sn() { return id_.second; }
@@ -42,13 +48,19 @@ private:
   bool bind_socket(int sockfd, struct addrinfo *rp);
 
   // Utility functions (may be refactored later into separate classes)
-  static void *get_inaddr(struct sockaddr *sa);              // returns IPv4 or IPv6 address 
-  static bool validate_msg(const std::string& msg);          // ensure message is well-formed
-  static void tokenize_msg(const std::string& msg,           // extract tokens
+  static void *get_inaddr(struct sockaddr *sa);               // returns IPv4 or IPv6 address 
+  static bool validate_msg(const std::string& msg);           // ensure message is well-formed
+  static void tokenize_msg(const std::string& msg,            // extract tokens
     std::queue<std::string>& tokens, const char delimiter);
-  static bool parse_tokens(std::queue<std::string>& tokens,  // validates tokens; builds AST
-    std::vector<std::map<std::string, std::pair<std::string, std::string>>>& ast);
+  static bool parse_tokens(std::queue<std::string>& tokens);  // validates tokens; generates callable 
 };
+
+template<typename T>
+int Server::test(std::map<std::string, T> params) 
+{
+  // params may be accessed by params["param1"]
+  return 0;
+}
 
 }; // namespace thylacine
 

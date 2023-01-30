@@ -35,7 +35,7 @@ private:
 
   // Static member constants
   static const std::unordered_set<std::string> Commands; 
-  static const std::map<std::string, std::map<std::string, std::string>> ValidFuncs;
+  static const std::map<std::string, std::map<std::string, std::string>> ParamMap;
 
   // Socket implementation methods (refactor later to uncouple from state)
   int create_socket(unsigned timeout);

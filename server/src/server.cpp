@@ -17,8 +17,8 @@ namespace thylacine {
 /** 
  *  Define static constants 
  */
-const std::unordered_set<std::string> Server::Commands { "START", "STOP" }; 
-const std::map<std::string, std::map<std::string, std::string>> Server::ValidFuncs = {
+const std::unordered_set<string> Server::Commands { "START", "STOP" }; 
+const std::map<string, std::map<string, string>> Server::ParamMap = {
   {"ID",   {{}}}, 
   {"TEST", {{"CMD", "Command"},
             {"DURATION", "int"},
@@ -141,14 +141,14 @@ bool Server::parse_tokens(std::queue<string>& tokens,
   std::vector<std::map<string, std::pair<string, string>>>& ast) {
   // Check first token for valid function name
   string func{tokens.front()};
-  if (ValidFuncs.find(func) == ValidFuncs.end()) {
+  if (ParamMap.find(func) == ParamMap.end()) {
     std::cerr << "parse_tokens() : Invalid function name" << std::endl; 
     return false;
   } else {        // if valid token
     tokens.pop(); // we are done with first token
   } 
   // Calculate number of parameters required for the given function.
-  unsigned numreq = ValidFuncs.at(func).size();
+  unsigned numreq = ParamMap.at(func).size();
   std::cout << "This function requires (" << numreq << ") parameter(s)" << std::endl;
 
   // Add first node (function name)
@@ -168,7 +168,7 @@ bool Server::parse_tokens(std::queue<string>& tokens,
     // Get next token (parameter name) 
     param = tokens.front(); 
     // Validate parameter name
-    if (ValidFuncs.at(func).find(param) == ValidFuncs.at(func).end()) {
+    if (ParamMap.at(func).find(param) == ParamMap.at(func).end()) {
       std::cerr << "parse_tokens() : Invalid parameter name" << std::endl; 
       return false;
     } else { // parameter name is valid
@@ -181,7 +181,7 @@ bool Server::parse_tokens(std::queue<string>& tokens,
     // Get parameter value
     paramval = tokens.front();
     // Validate parameter value and parameter type
-    string paramtype{ValidFuncs.at(func).at(param)};  // holds the required type 
+    string paramtype{ParamMap.at(func).at(param)};  // holds the required type 
     if (paramtype == "int") {
       try {
         paramval = std::stoi(paramval);

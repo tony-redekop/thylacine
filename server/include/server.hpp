@@ -4,9 +4,10 @@
 #include <map>
 #include <queue>
 #include <string>
-#include <unordered_set>
+#include <cassert>
 #include <variant>
 #include <iostream>
+#include <unordered_set>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netdb.h>
@@ -28,7 +29,7 @@ public:
 
   // Device methods (available to client through UDP)
   template<typename T>
-  int device_test(std::map<std::string, T> params); 
+  std::string device_test(std::map<std::string, T>& params); 
   inline std::string device_id();
 
   // Getters, setters
@@ -66,11 +67,14 @@ private:
  *  Device test
  */
 template<typename T>
-int Server::device_test(std::map<std::string, T> params) 
+std::string Server::device_test(std::map<std::string, T>& params) 
 {
-  // params may be accessed by params["param_name"]
-  std::cout << "test(): in test" << std::endl;
-  return 0;
+  std::string param1 = std::get<std::string>(params["CMD"]);
+  int param2 = std::get<int>(params["DURATION"]);
+  int param3 = std::get<int>(params["RATE"]);
+
+  return ("device_test() called with parameters: " + param1 + " " +
+    std::to_string(param2) + " " + std::to_string(param3));
 }
 
 /**

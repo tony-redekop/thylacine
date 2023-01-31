@@ -136,8 +136,6 @@ void Server::tokenize_msg(const std::string& msg,
 bool Server::parse_tokens(std::queue<string>& tokens,
   std::map<string, std::map<string, std::variant<int, string>>>& ast)
 {
-  std::map<string, std::variant<int, string>> param_map;
-
   // Check first token for valid function name
   string funcname{tokens.front()};
   if (ParamMap.find(funcname) == ParamMap.end()) {
@@ -152,10 +150,12 @@ bool Server::parse_tokens(std::queue<string>& tokens,
   unsigned numreq = ParamMap.at(funcname).empty() ? 0 : ParamMap.at(funcname).size();
   std::cout << "This function requires (" << numreq << ") parameter(s)" << std::endl;
 
-  string paramname{};     // holds parameter name
+  string paramname{}; // holds parameter name
   string paramval{};  // holds parameter value
 
-  // Validates the number of parameters, parameter name, and type
+  // Process remaining tokens and build parameter map
+  std::map<std::string, std::variant<int, std::string>> param_map;
+
   for (int i = 0; i < numreq; ++i) {
     // Validate number of parameters
     if (tokens.empty()) {
@@ -177,14 +177,15 @@ bool Server::parse_tokens(std::queue<string>& tokens,
       return false; 
     }
 
-    // Get parameter value
-    paramval = tokens.front();
+    paramval = tokens.front();  // get parameter value
+
+    std::variant<int, string> paramvar;                     // holds parameter value 
+    string paramtype{ParamMap.at(funcname).at(paramname)};  // holds the required type 
 
     // Validate parameter value and parameter type
-    string paramtype{ParamMap.at(funcname).at(paramname)};  // holds the required type 
     if (paramtype == "int") {
       try {
-        paramval = std::stoi(paramval);
+        paramvar = std::stoi(paramval);
       }
       catch(std::invalid_argument& ex) {
         std::cerr << "parse_tokens(): error: invalid arg type, expected 'int'" << std::endl;
@@ -199,14 +200,21 @@ bool Server::parse_tokens(std::queue<string>& tokens,
           std::cerr << "parse_tokens(): error: invalid arg type, expected Command" << std::endl;
           return false;
         }
+      paramvar = paramval;
     }
     tokens.pop();  // we are done with this token
 
-    param_map[paramname] = paramval;
-    // Continue looping through remaining tokens
+    // Capture parameter name and value in our map 
+    param_map[paramname] = paramvar;
+
+    // Continue iterating through token stream 
   }
+
+  // Build our AST (abstract syntax tree)
   ast[funcname] = param_map;
-  return true;
+
+  // Success!  We can now use our AST to build function calls
+  return true; 
 }
 
 /** 
@@ -327,18 +335,22 @@ void Server::listen()
       std::cout << "server: all tokens parsed!" << std::endl;
     }
 
+    std::string response{};    
+
     // Use AST to generate function call, (refactor this later)
     if (ast.find("TEST") != ast.end()) {
-      device_test(ast.at("TEST"));  // call our function
+      response = device_test(ast.at("TEST"));  // call our function
     }
     if (ast.find("ID") != ast.end()) {
-      device_id();
+      response = device_id();
     }
+    
+    // Send message
+    sendto(sockfd_, response.c_str(), strlen(response.c_str()),
+           0, (struct sockaddr *)&client_inaddr, addr_len);
   }
 
   close(sockfd_);
 }
-
-
 
 }; // namespace thylacine

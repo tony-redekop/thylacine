@@ -15,5 +15,10 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # create UDP socket obje
 
 for message in messages:
   sock.sendto(message.encode("iso-8859-1"), (UDP_IP, UDP_PORT)) 
+  data = sock.recvfrom(4096)
+  print("***")
+  print("Message sent :", message)
+  print("Response recieved from", data[1], ":")
+  print(str(data[0], encoding="iso-8859-1"))
 
 # print("Antonio Redekop")

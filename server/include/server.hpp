@@ -12,6 +12,8 @@
 #include <sys/types.h>
 #include <netdb.h>
 
+#define NDEBUG
+
 namespace thylacine {
 
 // Globals 
@@ -82,8 +84,11 @@ std::string Server::device_test(std::map<std::string, T>& params)
  */
 std::string Server::device_id() 
 {
+  
   std::string id{"ID;MODEL=" + id_.first + ";" + "SERIAL=" + id_.second + ";"};
+  #ifndef NDEBUG
   std::cout << id << std::endl;
+  #endif
   return id;
 }
 

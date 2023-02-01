@@ -123,7 +123,9 @@ void Server::tokenize_msg(const std::string& msg,
     if (i++ > 0) {
       tokenize_msg(token, tokens, '=');
     } else {  // if first token; exit condition
+      #ifndef NDEBUG
       std::cout << token << std::endl;
+      #endif
       tokens.push(token);
       continue;
     }
@@ -148,7 +150,9 @@ bool Server::parse_tokens(std::queue<string>& tokens,
   // Calculate number of parameters required for the given function.
   // unsigned numreq = ParamMap.at(funcname).size()
   unsigned numreq = ParamMap.at(funcname).empty() ? 0 : ParamMap.at(funcname).size();
+  #ifndef NDEBUG
   std::cout << "This function requires (" << numreq << ") parameter(s)" << std::endl;
+  #endif
 
   string paramname{}; // holds parameter name
   string paramval{};  // holds parameter value
@@ -309,9 +313,11 @@ void Server::listen()
     }
     
     // Print info 
+    #ifndef NDEBUG
     std::cout << "server: got a UDP packet from " << client_ip << std::endl; 
     std::cout << "server: packet contains: " << msg << std::endl;
     std::cout << "server: packet is " << numbytes << " bytes long" << std::endl;
+    #endif
 
     // Check for "STOP;" command to stop listening and exit loop
     std::string stop_msg{"STOP;"};
@@ -332,7 +338,9 @@ void Server::listen()
       tokens = {};  // clear our queue of tokens
       continue;     // continue listening
     } else {
+      #ifndef NDEBUG
       std::cout << "server: all tokens parsed!" << std::endl;
+      #endif
     }
 
     std::string response{};    

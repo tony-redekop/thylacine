@@ -36,7 +36,7 @@ Server::Server(unsigned port, unsigned timeout) :
   sockfd_{-1}, 
   res_{nullptr}, 
   state_{State::IDLE},
-  id_{std::make_pair("PLUMBUS","SN001")}  // fixed ID/SN for now
+  id_{std::make_pair("MOD-A","SN001")}  // fixed ID/SN for now
 {
   // Bounds checking
   if (port < 1 || port > 65535) {

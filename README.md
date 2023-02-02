@@ -21,7 +21,7 @@ Simple UDP server and client demo to simulate communication with I/O devices
 
 ### Instructions
 
-**Server**
+**Build Instructions**
 
 1.  Download & install dependencies
 2.  `$ cd thylacine`
@@ -30,18 +30,27 @@ Simple UDP server and client demo to simulate communication with I/O devices
 5.  `$ cd build`
 6.  `$ cmake -G "Unix Makefiles" ..`
 7.  `$ make`
-8.  `$ ./test/runtest`
 
 **Client**
 
-1.  `$ cd thylacine`
-2.  `$ cd client`
-3.  `$ chmod +x client.py`
-4.  `$ ./client.py`
+Note: The client starts the server process. No need to run
+the server directly.
+
+1.  Build the server per Build Instructions 
+2.  `$ cd thylacine`
+3.  `$ cd client`
+4.  `$ chmod +x client.py`
+5.  `$ ./client.py`
+
+**Server**
+1.  `$ ./src/demo`
+
+**Unit Tests**
+1.  `$ ./test/runtest`
 
 ### Usage
 
-See /test/test.cpp for usage examples.
+Coming soon...
 
 ---
 

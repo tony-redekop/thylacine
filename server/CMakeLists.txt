@@ -10,3 +10,6 @@ add_subdirectory(test)
 
 target_link_options(runtest PRIVATE -Wall -Wextra -ldl)
 target_include_directories(runtest PRIVATE include)
+
+target_link_options(demo PRIVATE -Wall -Wextra -ldl)
+target_include_directories(demo PRIVATE include)

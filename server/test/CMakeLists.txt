@@ -1,5 +1,6 @@
 set(TEST_FILES test.cpp)
 
+list(REMOVE_ITEM SOURCE_FILES main.cpp)
 list(TRANSFORM SOURCE_FILES PREPEND ${CMAKE_SOURCE_DIR}/src/)
 
 add_executable(runtest ${TEST_FILES} ${SOURCE_FILES})

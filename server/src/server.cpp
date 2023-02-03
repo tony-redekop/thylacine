@@ -247,6 +247,14 @@ int Server::create_socket(unsigned timeout)
       &tv,
       sizeof(tv)
     );
+    int yes = 1;
+    setsockopt(sockfd,  // allows re-use of local addresses and ports
+      SOL_SOCKET,
+      SO_REUSEADDR,
+      &yes,
+      sizeof(yes)
+    );
+
     // If we reach end of results without success
     if (rp == nullptr) {
       throw std::runtime_error("error: failed to create / bind socket");

@@ -6,39 +6,47 @@ import sys
 import os
 
 UDP_IP = "localhost"
-UDP_PORT = 4960
+UDP_PORT = 9000
 UDP_TIMEOUT = 0
 
-MESSAGE1 = "ID;"
-MESSAGE2 = "TEST;CMD=START;DURATION=60;RATE=1000;"
-MESSAGE3 = "STOP;"
+# Set up demo
+messages = []
+messages.append("ID;")
+messages.append("TEST;CMD=START;DURATION=60;RATE=1000;")
+messages.append("TEST;CMD=STOP;DURATION=60;RATE=1000;")  # refactor to remove DURATION and RATE params
+messages.append("STOP;")
+
+print("Welcome to thylacine client demo! ")
 
 pid = os.fork()
-
 if pid == 0: # child process
+  print("Status: starting server (I/O device)")
   os.execv("../server/build/src/demo", ["demo", str(UDP_PORT), str(UDP_TIMEOUT)])
 else: 
-  time.sleep(2) # allow for device startup (refactor this later) 
+  time.sleep(1) # allow for server startup (refactor this later)
+  sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # create UDP socket object
+  print("Status: ready for UDP communication with IP:", UDP_IP, "PORT:", UDP_PORT)
 
-messages = [MESSAGE1, MESSAGE2, MESSAGE3]
+print("***")
+print("Default messages:")
+for index, message in list(enumerate(messages)):
+  print("  " + str(index) + ")", message)
+print("  " + str(index+1) + ")", "<CUSTOM>")
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # create UDP socket object
+while (1):
+  selection = int(input("Enter selection: "))
+  message = messages[selection]
 
-for message in messages:
-  print("***")
-  print("Message sent: ", message)
-  
-  if message == "STOP;":
-    break
+  # Send
+  sock.sendto(message.encode("iso-8859-1"), (UDP_IP, UDP_PORT))
 
-  print("Waiting for device response...")
-
-  sock.sendto(message.encode("iso-8859-1"), (UDP_IP, UDP_PORT)) 
+  # Recieve (blocking)
   data = sock.recvfrom(UDP_PORT)
+  print("client: Response recieved from", data[1], ":", \
+    str(data[0], encoding="iso-8859-1"))
 
-  print("Response recieved from", data[1], ":")
-  print(str(data[0], encoding="iso-8859-1"))
-
-  time.sleep(2)
+  # Exit condition
+  if selection == 3:
+    break
 
 # print("Antonio Redekop")

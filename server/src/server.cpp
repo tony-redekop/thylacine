@@ -4,6 +4,8 @@
 #include <iostream>
 #include <sstream>
 #include <cassert>
+#include <csignal>
+#include <sys/wait.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <unistd.h>
@@ -65,10 +67,13 @@ Server::Server(unsigned port, unsigned timeout) :
  */
 Server::~Server() 
 {
+  // Clean up socket structures
   if (res_) {
     freeaddrinfo(res_);
     res_ = nullptr;
   }
+  // Close file descriptors 
+  close(sockfd_);
 }
 
 /**
@@ -292,6 +297,9 @@ void Server::listen()
 
   std::queue<string> tokens{};  // holds "stream" of tokens
 
+  // Initialize pid to 0
+  pid_t pid = 0;
+
   // Main recieve loop
   while (1) { 
     // Note: recvfrom() blocks and returns -1 if no data is recieved before timeout
@@ -330,6 +338,8 @@ void Server::listen()
     // Check for "STOP;" command to stop listening and exit loop
     std::string stop_msg{"STOP;"};
     if (msg == stop_msg) {
+      sendto(sockfd_, "STATUS;STATE=IDLE;", strlen("STATUS;STATE=IDLE;"),
+        0, (struct sockaddr *)&client_inaddr, addr_len);
       break;
     }
 
@@ -351,22 +361,43 @@ void Server::listen()
       #endif
     }
 
-    std::string response{};    
+    int wstatus;
+    if (pid > 0) {
+      if (ast.find("TEST") != ast.end() &&
+        std::get<string>(ast.at("TEST").at("CMD")) == "STOP") {
+          kill(pid, SIGTERM);
+          sendto(sockfd_, "TEST;RESULT=STOPPED;", strlen("TEST;RESULT=STOPPED;"),
+            0, (struct sockaddr *)&client_inaddr, addr_len);
+          continue;
+      } else {  // if we don't have STOP command
+        waitpid(pid, &wstatus, 0);
+      }
+    }
 
-    // Use AST to generate function call, (refactor this later)
-    if (ast.find("TEST") != ast.end()) {
-      response = device_test(ast.at("TEST"));  // call our function
+    pid = fork();
+
+    if (pid > 0) {
+      continue;
     }
-    if (ast.find("ID") != ast.end()) {
-      response = device_id();
+    if (pid == 0) {  // child process
+      // Use AST to generate function call
+      std::string result;
+      if (ast.find("TEST") != ast.end() &&
+        std::get<string>(ast.at("TEST").at("CMD")) == "START") {
+          const char *msg = "TEST;RESULT=STARTED;";
+          sendto(sockfd_, msg, strlen(msg),
+            0, (struct sockaddr *)&client_inaddr, addr_len);
+          result = device_test(ast.at("TEST"));  // call our function
+      } else if (ast.find("ID") != ast.end()) {
+          result = device_id();
+      }
+      
+      sendto(sockfd_, result.c_str(), strlen(result.c_str()),
+          0, (struct sockaddr *)&client_inaddr, addr_len);
+
+      exit(0);
     }
-    
-    // Send message
-    sendto(sockfd_, response.c_str(), strlen(response.c_str()),
-           0, (struct sockaddr *)&client_inaddr, addr_len);
   }
-
-  close(sockfd_);
 }
 
 }; // namespace thylacine

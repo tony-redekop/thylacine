@@ -3,7 +3,9 @@
 
 #include <map>
 #include <queue>
+#include <thread>
 #include <string>
+#include <chrono>
 #include <cassert>
 #include <variant>
 #include <iostream>
@@ -75,8 +77,14 @@ std::string Server::device_test(std::map<std::string, T>& params)
   int param2 = std::get<int>(params["DURATION"]);
   int param3 = std::get<int>(params["RATE"]);
 
-  return ("device_test() called with parameters: " + param1 + " " +
-    std::to_string(param2) + " " + std::to_string(param3));
+  std::string result = "device_test() called with parameters: " + param1 + " " +
+    std::to_string(param2) + " " + std::to_string(param3);
+
+  std::cout << "device_test(): Simulating time-consuming test by sleeping (10 sec)" << std::endl;
+  std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+  std::cout << "device_test(): end sleep" << std::endl;
+
+  return result;
 }
 
 /**

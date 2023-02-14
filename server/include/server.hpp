@@ -77,14 +77,12 @@ std::string Server::device_test(std::map<std::string, T>& params)
   int param2 = std::get<int>(params["DURATION"]);
   int param3 = std::get<int>(params["RATE"]);
 
-  std::string result = "device_test() called with parameters: " + param1 + " " +
-    std::to_string(param2) + " " + std::to_string(param3);
+  for (int i = 0; i < 10; i++) {
+    std::cout << "Simulating work..." << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  }
 
-  std::cout << "device_test(): Simulating time-consuming test by sleeping (10 sec)" << std::endl;
-  std::this_thread::sleep_for(std::chrono::milliseconds(10000));
-  std::cout << "device_test(): end sleep" << std::endl;
-
-  return result;
+  return std::string{"rest results"};
 }
 
 /**

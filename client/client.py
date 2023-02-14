@@ -33,20 +33,26 @@ for index, message in list(enumerate(messages)):
   print("  " + str(index) + ")", message)
 print("  " + str(index+1) + ")", "<CUSTOM>")
 
-while (1):
+pid2 = -1
+while True:
   selection = int(input("Enter selection: "))
   message = messages[selection]
-
   # Send
   sock.sendto(message.encode("iso-8859-1"), (UDP_IP, UDP_PORT))
 
-  # Recieve (blocking)
-  data = sock.recvfrom(UDP_PORT)
-  print("client: Response recieved from", data[1], ":", \
-    str(data[0], encoding="iso-8859-1"))
+  pid2 = os.fork() 
+  if pid2 == 0: 
+    while True:
+      # Recieve (blocking)
+      data = sock.recvfrom(UDP_PORT)
 
-  # Exit condition
-  if selection == 3:
-    break
+      print("client: Response recieved from", data[1], ":", \
+        str(data[0], encoding="iso-8859-1"))
+
+      if str(data[0], encoding="iso-8859-1") == "TEST;RESULT=STARTED;":
+        continue
+      else:
+        exit(0)
+
 
 # print("Antonio Redekop")

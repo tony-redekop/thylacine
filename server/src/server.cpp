@@ -298,7 +298,7 @@ void Server::listen()
   std::queue<string> tokens{};  // holds "stream" of tokens
 
   // Initialize pid to 0
-  pid_t pid = 0;
+  pid_t pid = -1;
 
   // Main recieve loop
   while (1) { 
@@ -360,44 +360,40 @@ void Server::listen()
       std::cout << "server: all tokens parsed!" << std::endl;
       #endif
     }
-
-    int wstatus;
     if (pid > 0) {
       if (ast.find("TEST") != ast.end() &&
         std::get<string>(ast.at("TEST").at("CMD")) == "STOP") {
           kill(pid, SIGTERM);
+          int wstatus;
+          waitpid(pid, &wstatus, 0);
           sendto(sockfd_, "TEST;RESULT=STOPPED;", strlen("TEST;RESULT=STOPPED;"),
-            0, (struct sockaddr *)&client_inaddr, addr_len);
+              0, (struct sockaddr *)&client_inaddr, addr_len);
           continue;
-      } else {  // if we don't have STOP command
-        waitpid(pid, &wstatus, 0);
       }
     }
 
     pid = fork();
-
-    if (pid > 0) {
-      continue;
-    }
+    
     if (pid == 0) {  // child process
       // Use AST to generate function call
       std::string result;
-      if (ast.find("TEST") != ast.end() &&
-        std::get<string>(ast.at("TEST").at("CMD")) == "START") {
-          const char *msg = "TEST;RESULT=STARTED;";
-          sendto(sockfd_, msg, strlen(msg),
+      if (ast.find("TEST") != ast.end()) {
+        if (std::get<string>(ast.at("TEST").at("CMD")) == "START") {
+          sendto(sockfd_, "TEST;RESULT=STARTED;", strlen("TEST;RESULT=STARTED;"),
             0, (struct sockaddr *)&client_inaddr, addr_len);
           result = device_test(ast.at("TEST"));  // call our function
+          sendto(sockfd_, result.c_str(), strlen(result.c_str()),
+            0, (struct sockaddr *)&client_inaddr, addr_len);
+          exit(0);
+        }
       } else if (ast.find("ID") != ast.end()) {
           result = device_id();
+          sendto(sockfd_, result.c_str(), strlen(result.c_str()),
+            0, (struct sockaddr *)&client_inaddr, addr_len);
+          exit(0);
       }
-      
-      sendto(sockfd_, result.c_str(), strlen(result.c_str()),
-          0, (struct sockaddr *)&client_inaddr, addr_len);
-
-      exit(0);
-    }
-  }
-}
+    }  // end child process
+  }    // end recieve loop
+}      // end listen()
 
 }; // namespace thylacine

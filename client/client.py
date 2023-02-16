@@ -13,7 +13,7 @@ UDP_TIMEOUT = 0
 messages = []
 messages.append("ID;")
 messages.append("TEST;CMD=START;DURATION=60;RATE=1000;")
-messages.append("TEST;CMD=STOP;DURATION=60;RATE=1000;")  # refactor to remove DURATION and RATE params
+messages.append("TEST;CMD=STOP;")  # refactor to remove DURATION and RATE params
 messages.append("STOP;")
 
 print("Welcome to thylacine client demo! ")

@@ -153,8 +153,13 @@ bool Server::parse_tokens(std::queue<string>& tokens,
   } 
 
   // Calculate number of parameters required for the given function.
-  // unsigned numreq = ParamMap.at(funcname).size()
-  unsigned numreq = ParamMap.at(funcname).empty() ? 0 : ParamMap.at(funcname).size();
+  unsigned numreq = 0;
+  if (funcname == "TEST" && tokens.back() == "STOP") {
+    numreq = 1; 
+  } else {
+    numreq = ParamMap.at(funcname).empty() ? 0 : ParamMap.at(funcname).size();
+  }
+
   #ifndef NDEBUG
   std::cout << "This function requires (" << numreq << ") parameter(s)" << std::endl;
   #endif

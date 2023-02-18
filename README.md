@@ -40,7 +40,11 @@ the server directly.
 2.  `$ cd thylacine`
 3.  `$ cd client`
 4.  `$ chmod +x client.py`
-5.  `$ ./client.py`
+5.  `python -m venv env`
+6.  `source env/bin/activate`
+7.  `pip install -r requirements.txt`
+8.  `$ ./client.py`
+9.  `deactivate`
 
 **Server**
 1.  `$ ./src/demo`

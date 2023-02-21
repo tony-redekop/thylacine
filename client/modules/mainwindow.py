@@ -1,25 +1,35 @@
+import queue
 import random
 from PySide6 import QtCore, QtWidgets, QtGui
-
-#print(sys.argv[0])
+from modules.constants import UDP_IP, UDP_PORT, UDP_TIMEOUT, MESSAGES
 
 class MainWindow(QtWidgets.QWidget):  # extend QWidget class
   def __init__(self):
-    super().__init__()              # invoke parent constructor
+    super().__init__()            
 
-    self.hello = ["Hello Welt", "Hello World!", "Hola Mundo"]
+    self.msg_queue = queue.Queue()
 
-    self.button = QtWidgets.QPushButton("Click Me!")
-    self.text = QtWidgets.QLabel("Hello World",
-      alignment = QtCore.Qt.AlignCenter)
-    
+    # self.text = QtWidgets.QLabel(alignment=QtCore.Qt.AlignCenter)
+    self.text = QtWidgets.QLabel()
+    mystr = "Welcome to thylacine client demo!\n" + \
+      "Status: ready for UDP communication with IP: " + str(UDP_IP) + " PORT: " + str(UDP_PORT) + \
+      "\n***\n" + \
+      "Default messages:\n" 
+    for index, message in list(enumerate(MESSAGES)):
+      mystr = mystr + str(index) + ") " + message + "\n" 
+      # print("  " + str(index+1) + ")", "<CUSTOM>")
+
+    self.text.setText(mystr)
+
+    self.button = QtWidgets.QPushButton("Send message")
     self.layout = QtWidgets.QVBoxLayout(self)
     self.layout.addWidget(self.text)
     self.layout.addWidget(self.button)
 
-    # we connect a signal to a slot
-    self.button.clicked.connect(self.magic)
+    # We connect a signal to a slot
+    self.button.clicked.connect(self.send_message)
   
   @QtCore.Slot()
-  def magic(self):
-    self.text.setText(random.choice(self.hello))
+  def send_message(self):
+    message = MESSAGES[0]
+    self.msg_queue.put(message)

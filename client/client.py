@@ -1,58 +1,54 @@
 #! /usr/bin/env python
 
-import socket
-import time
-import sys
 import os
+import sys
+import time
+import queue
+import socket
+import threading
+from PySide6 import QtWidgets
+from modules.mainwindow import MainWindow 
+from modules.constants import UDP_IP, UDP_PORT, UDP_TIMEOUT
 
-UDP_IP = "localhost"
-UDP_PORT = 9000
-UDP_TIMEOUT = 0
+def client_logic(sock, msg_queue):
+  while True:
+    message = msg_queue.get()  # blocking
+    # Send message to server
+    sock.sendto(message.encode("iso-8859-1"), (UDP_IP, UDP_PORT))
+    # Start new thread to handle recieve loop 
+    recieve_loop_thread = threading.Thread(target=recieve_loop, args=(sock,))
+    recieve_loop_thread.start()
 
-# Set up demo
-messages = []
-messages.append("ID;")
-messages.append("TEST;CMD=START;DURATION=60;RATE=1000;")
-messages.append("TEST;CMD=STOP;")  # refactor to remove DURATION and RATE params
-messages.append("STOP;")
+def recieve_loop(sock):
+  while True:
+    data = sock.recvfrom(UDP_PORT)  # blocking operation
+    print("client: Response recieved from", data[1], ":", \
+      str(data[0], encoding="iso-8859-1"))
+    if str(data[0], encoding="iso-8859-1") == "TEST;RESULT=STARTED;":
+      continue
+    else:
+      break
 
-print("Welcome to thylacine client demo! ")
-
-pid = os.fork()
-if pid == 0: # child process
+# Start server
+pid1 = os.fork()
+if pid1 == 0: # child process
   print("Status: starting server (I/O device)")
   os.execv("../server/build/src/demo", ["demo", str(UDP_PORT), str(UDP_TIMEOUT)])
 else: 
-  time.sleep(1) # allow for server startup (refactor this later)
-  sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # create UDP socket object
-  print("Status: ready for UDP communication with IP:", UDP_IP, "PORT:", UDP_PORT)
+  time.sleep(1) # allow some time for server startup
 
-print("***")
-print("Default messages:")
-for index, message in list(enumerate(messages)):
-  print("  " + str(index) + ")", message)
-print("  " + str(index+1) + ")", "<CUSTOM>")
+# Create UDP socket object
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # create UDP socket object
 
-pid2 = -1
-while True:
-  selection = int(input("Enter selection: "))
-  message = messages[selection]
-  # Send
-  sock.sendto(message.encode("iso-8859-1"), (UDP_IP, UDP_PORT))
+# Create main window
+app = QtWidgets.QApplication([])
+mainwindow = MainWindow()
+mainwindow.resize(800, 600)
 
-  pid2 = os.fork() 
-  if pid2 == 0: 
-    while True:
-      # Recieve (blocking)
-      data = sock.recvfrom(UDP_PORT)
+# Create and start thread to handle client message loop 
+client_thread = threading.Thread(target=client_logic, args=(sock, mainwindow.msg_queue))
+client_thread.start()
 
-      print("client: Response recieved from", data[1], ":", \
-        str(data[0], encoding="iso-8859-1"))
-
-      if str(data[0], encoding="iso-8859-1") == "TEST;RESULT=STARTED;":
-        continue
-      else:
-        exit(0)
-
-
-# print("Antonio Redekop")
+# Run GUI on main thread
+mainwindow.show()
+sys.exit(app.exec())

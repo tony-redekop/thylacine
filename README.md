@@ -18,6 +18,7 @@ Simple UDP server and client demo to simulate communication with I/O devices
 
 ### Dependencies
 - **cmake** minimum 3.14
+- **PySide6** minimum 6.4.2
 
 ### Instructions
 
@@ -33,9 +34,6 @@ Simple UDP server and client demo to simulate communication with I/O devices
 
 **Client**
 
-Note: The client starts the server process. No need to run
-the server directly.
-
 1.  Build the server per Build Instructions 
 2.  `$ cd thylacine`
 3.  `$ cd client`
@@ -47,6 +45,10 @@ the server directly.
 9.  `deactivate`
 
 **Server**
+
+Note: The client starts the server process. No need to run
+the server directly.
+
 1.  `$ ./src/demo`
 
 **Unit Tests**

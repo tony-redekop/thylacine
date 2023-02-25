@@ -3,44 +3,52 @@ import time
 import queue
 import random
 from PySide6 import QtCore, QtWidgets
+from modules.consolewidget import ConsoleWidget
 from modules.constants import UDP_IP, UDP_PORT, UDP_TIMEOUT, MESSAGES
 
 class MainWindow(QtWidgets.QWidget):  # extend QWidget class
-  def __init__(self):
+  def __init__(self, socket, recv_queue):
     super().__init__()            
-    # Thread-safe queue allows communication between main thread (UI thread) and client thread
-    self.msg_queue = queue.Queue()
-    # Scaffold our main window with layouts and add widgets
+    self.socket = socket
+    # Define thread-safe queues allowing communication between client and MainWindow
+    self.recv_queue = recv_queue
+    self.send_queue = queue.Queue()
+    # Scaffold our main window and create widgets (including custom ConsoleWidget)
     self.build_ui()
     # Connect signals to slots 
     self.send_button.clicked.connect(self.send_message)
     self.connect_button.clicked.connect(self.connect_to_host)
-
-    # mystr = "Welcome to thylacine client demo!\n" + \
-    #   "Status: ready for UDP communication with IP: " + str(UDP_IP) + " PORT: " + str(UDP_PORT) + \
-    #   "\n***\n" + \
-    #   "Default messages:\n" 
-    # for index, message in list(enumerate(MESSAGES)):
-    #   mystr = mystr + str(index) + ") " + message + "\n" 
-    #   # print("  " + str(index+1) + ")", "<CUSTOM>")
-    # self.text.setText(mystr)
+    # Write default console message
+    self.consolewidget.write("(client) $ Welcome to thylacine client demo!\n")
 
   @QtCore.Slot()
   def connect_to_host(self):
     # Start server
+    self.consolewidget.write("(client) $ Starting server...\n")
     pid1 = os.fork()
     if pid1 == 0: # child process
-      print("Status: starting server (I/O device)")
       os.execv("../server/build/src/demo", ["demo", str(UDP_PORT), str(UDP_TIMEOUT)])
     else: 
-      time.sleep(1) # allow some time for server startup
+      time.sleep(1)                     # allow time for server startup
+      self.send_message(MESSAGES[0])    # send discovery message
+      response = self.recv_queue.get()  # wait for response (blocking)
+
+      # Write to our ConsoleWidget
+      self.consolewidget.write(response) 
+      ready_msg = "\n(client) $ Ready for UDP communication\n"
+      default_msg = "\n***\n" + "Default messages:\n"
+      for index, message in list(enumerate(MESSAGES)):
+        default_msg = default_msg + str(index) + ") " + message + "\n" 
+      default_msg = default_msg + "***\n"
+      self.consolewidget.write(default_msg)
 
   @QtCore.Slot()
-  def send_message(self):
-    message = MESSAGES[0]
-    self.msg_queue.put(message)
+  def send_message(self, message):
+    self.send_queue.put(message)
 
   def build_ui(self):
+    self.setWindowTitle("UDP Client")
+
     # Define QLabels 
     self.label_port = QtWidgets.QLabel("Port:")
     self.label_hostname = QtWidgets.QLabel("Host:")
@@ -62,16 +70,17 @@ class MainWindow(QtWidgets.QWidget):  # extend QWidget class
     self.lineedit_port = QtWidgets.QLineEdit()
     self.lineedit_message = QtWidgets.QLineEdit()
     self.lineedit_hostname = QtWidgets.QLineEdit()
-    self.lineedit_hostname.setFixedSize(500, 40)
-    self.lineedit_port.setFixedSize(500, 40)
+    self.lineedit_hostname.setFixedHeight(40)
+    self.lineedit_port.setFixedHeight(40)
     self.lineedit_message.setFixedHeight(40)
-
-    # Define QTextEdits
-    self.textedit_console = QtWidgets.QTextEdit()
 
     # Define QListWidgets 
     self.listwidget_tests = QtWidgets.QListWidget(self)
     self.listwidget_sessions = QtWidgets.QListWidget(self)
+
+    # Define custom Console widget
+    self.consolewidget = ConsoleWidget()
+    self.consolewidget.setFixedWidth(600)
 
     # Define main layouts
     self.layout_main = QtWidgets.QHBoxLayout(self)
@@ -114,7 +123,7 @@ class MainWindow(QtWidgets.QWidget):  # extend QWidget class
     self.layout_serverinfo_row1.addWidget(self.lineedit_hostname)
     self.layout_serverinfo_row2.addWidget(self.label_port)
     self.layout_serverinfo_row2.addWidget(self.lineedit_port)
-    self.layout_active.addWidget(self.textedit_console)
+    self.layout_active.addWidget(self.consolewidget)
     self.layout_active.addSpacing(10)
     self.layout_active.addLayout(self.layout_sendmessage)
     self.layout_sessions.addWidget(self.listwidget_sessions)
